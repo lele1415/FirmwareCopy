@@ -37,6 +37,9 @@
     3. 界面美化
     4. 优化输入框的添加和删除
     5. 增加拷贝进度显示
+-----------------------  
+    版本1.8
+    1. 代码路径改为下拉菜单选择，且由脚本自动获取
 -->
 <Html>
 <Head>
@@ -379,8 +382,8 @@ End Sub
 
 <br>
 <fieldset>
-    <legend>代码路径（精确到alps，如：Z:\8312C\alps）：</legend>
-    <input id="source_link" type="text" size="20"/>
+<select id="source_link" name="link">
+</select>
 </fieldset>
 
 <br>
