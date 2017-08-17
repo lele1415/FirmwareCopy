@@ -1,0 +1,128 @@
+<Html>
+<Head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<Title>Copy</Title>
+</Head>
+<Script Language="VBScript">
+
+set ws=CreateObject("wscript.shell")
+Set Fso=CreateObject("Scripting.FileSystemObject")
+
+Sub Window_OnLoad
+Window.MoveTo 1520,100
+Window.ResizeTo 400,200
+End Sub
+
+Sub Copy1()
+DL=document.getElementById("destination_link").value
+PN=document.getElementById("project_name").value
+SL=document.getElementById("source_link").value
+B=document.getElementById("mode").value
+B1=document.getElementById("mode1").value
+
+L1=SL&"out\target\product\"&PN&"\"
+L2=DL&"\"
+
+If B1="1" Then
+    Fso.CreateFolder(L2&"modem")
+    Fso.copyfile L1&"obj\CODEGEN\cgen\APDB*",L2&"modem"&"\",false
+    Fso.DeleteFile L2&"modem"&"\APDB*ENUM",True
+    Fso.copyfile L1&"obj\CUSTGEN\custom\modem\BPL*",L2&"modem"&"\",false
+End If
+
+If B="1" Then
+    Fso.copyfile L1&"a*",L2,false
+    Fso.copyfile L1&"b*",L2,false
+    Fso.copyfile L1&"c*",L2,false
+    Fso.copyfile L1&"e*",L2,false
+    Fso.copyfile L1&"i*",L2,false
+    Fso.copyfile L1&"k*",L2,false
+    Fso.copyfile L1&"l*",L2,false
+    Fso.copyfile L1&"m*",L2,false
+    Fso.copyfile L1&"p*",L2,false
+    Fso.copyfile L1&"r*",L2,false
+    Fso.copyfile L1&"secro.img",L2,false
+    Fso.copyfile L1&"userdata.img",L2,false
+    msgbox("copy success")
+End If
+
+If B="2" Then
+    Fso.copyfile L1&"a*",L2,false
+    Fso.copyfile L1&"b*",L2,false
+    Fso.copyfile L1&"c*",L2,false
+    Fso.copyfile L1&"e*",L2,false
+    Fso.copyfile L1&"i*",L2,false
+    Fso.copyfile L1&"k*",L2,false
+    Fso.copyfile L1&"l*",L2,false
+    Fso.copyfile L1&"m*",L2,false
+    Fso.copyfile L1&"p*",L2,false
+    Fso.copyfile L1&"r*",L2,false
+    Fso.copyfile L1&"secro.img",L2,false
+    Fso.copyfile L1&"userdata.img",L2,false
+    msgbox("small file copyed OK")
+    Fso.copyfile L1&"system.img",L2,false
+    msgbox("system.img copyed OK")
+    msgbox("copy success")
+End If
+
+If B="3" Then
+    Fso.copyfile L1&"a*",L2,false
+    Fso.copyfile L1&"b*",L2,false
+    Fso.copyfile L1&"c*",L2,false
+    Fso.copyfile L1&"e*",L2,false
+    Fso.copyfile L1&"i*",L2,false
+    Fso.copyfile L1&"k*",L2,false
+    Fso.copyfile L1&"l*",L2,false
+    Fso.copyfile L1&"MBR",L2,false
+    Fso.copyfile L1&"*_Android_scatter.txt",L2,false
+    Fso.copyfile L1&"p*",L2,false
+    Fso.copyfile L1&"r*",L2,false
+    Fso.copyfile L1&"secro.img",L2,false
+    Fso.copyfile L1&"userdata.img",L2,false
+    msgbox("small file copyed OK")
+    Fso.copyfile L1&"system.img",L2,false
+    msgbox("system.img copyed OK")
+    Fso.copyfile L1&"target_files-package.zip",L2,false
+    msgbox("target_files-package.zip copyed OK")
+    Fso.copyfile L1&"*-ota-user.chenxs.zip",L2,false
+    msgbox("-ota-user.chenxs.zip copyed OK")
+    msgbox("copy success")
+End If
+
+If B="4" Then
+    Fso.copyfile L1&"*",L2,false
+    msgbox("copy success")
+End If
+End Sub
+
+</Script>
+<Body bgcolor="White">
+
+<select id="source_link" name="link">
+<option value="Z:\8312C\alps\">C</option>
+<option value="Z:\8312D\alps\">D</option>
+<option value="Z:\alps\">M</option>
+<option value="Z:\backups\8312C\alps\">BC</option>
+<option value="Z:\backups\alps\">BM</option>
+</select>
+
+<select id="mode" name="mode">
+<option value="1">只拷贝小文件</option>
+<option value="2">system.img后拷贝</option>
+<option value="3">system.img后拷贝带OTA</option>
+<option value="4">全部一起拷贝</option>
+</select>
+<select id="mode1" name="mode1">
+<option value="1">拷贝modem</option>
+<option value="2">不拷贝modem</option>
+</select>
+<br>工程名：
+<br><input id="project_name" type="text" size="15"/>
+<br>目标路径：
+<br><input id="destination_link" type="text" size="50"/>
+<br>
+<Button OnClick="self.close()">Exit</Button>
+&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp
+<Button OnClick="Copy1()">Copy!</Button>
+</Body>
+</Html>
