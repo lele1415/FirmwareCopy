@@ -6,6 +6,11 @@
 -----------------------
     版本1.2
     1. 自动获取工程名
+-----------------------
+    版本1.3
+    1. 去掉代码路径选择，改为手动输入
+    2. 优化文件拷贝顺序，最后拷贝system.img
+    3. 细节优化
 -->
 
 <Html>
@@ -20,15 +25,15 @@ Set Fso=CreateObject("Scripting.FileSystemObject")
 
 Sub Window_OnLoad
 Window.MoveTo 1520,100
-Window.ResizeTo 400,200
+Window.ResizeTo 400,250
 End Sub
 
 Sub Copy1()
 DL=document.getElementById("destination_link").value
 SL=document.getElementById("source_link").value
-B1=document.getElementById("mode").value
+MD=document.getElementById("modem").value
 
-Set MyFolder = Fso.GetFolder(SL&"out\target\product\")
+Set MyFolder = Fso.GetFolder(SL&"\out\target\product\")
 Set Folders = MyFolder.SubFolders
 For Each Folder in Folders
 	FN=Folder.Name&"_assetsOverlay"
@@ -37,17 +42,24 @@ For Each Folder in Folders
 	End If
 Next
 
-L1=SL&"out\target\product\"&PN&"\"
+L1=SL&"\out\target\product\"&PN&"\"
 L2=DL&"\"
 
-If B1="1" Then
+If MD="1" Then
     Fso.CreateFolder(L2&"modem")
     Fso.copyfile L1&"obj\CODEGEN\cgen\APDB*",L2&"modem"&"\",false
     Fso.DeleteFile L2&"modem"&"\APDB*ENUM",True
     Fso.copyfile L1&"obj\CUSTGEN\custom\modem\BPL*",L2&"modem"&"\",false
 End If
 
-Fso.copyfile L1&"*",L2,false
+Set MyFolder1 = Fso.GetFolder(L1)
+Set Files = MyFolder1.Files
+For Each File in Files
+	If File.Name <> "system.img" Then 
+		Fso.copyfile L1&File.Name,L2,false
+	End If
+Next
+Fso.copyfile L1&"system.img",L2,false
 msgbox("copy success")
 
 End Sub
@@ -55,22 +67,21 @@ End Sub
 </Script>
 <Body bgcolor="White">
 
-<select id="source_link" name="link">
-<option value="Z:\8312C\alps\">C</option>
-<option value="Z:\8312D\alps\">D</option>
-<option value="Z:\alps\">M</option>
-<option value="Z:\backups\8312C\alps\">BC</option>
-<option value="Z:\backups\alps\">BM</option>
-</select>
-
-<select id="mode" name="mode">
+<select id="modem" name="modem">
 <option value="1">拷贝modem</option>
 <option value="2">不拷贝modem</option>
 </select>
+<br>
+
+<br>代码路径（精确到alps，如：Z:\8312C\alps）：
+<br><input id="source_link" type="text" size="20"/>
+<br>
 
 <br>目标路径：
 <br><input id="destination_link" type="text" size="50"/>
 <br>
+<br>
+
 <Button OnClick="self.close()">Exit</Button>
 &nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp
 <Button OnClick="Copy1()">Copy!</Button>
