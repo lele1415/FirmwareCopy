@@ -16,6 +16,14 @@
 	1. 增加带OTA拷贝模式
 	2. 优化modem文件拷贝
 	3. 细节优化
+-----------------------  
+	版本1.5
+	1. 添加选项、路径检测，提示报错
+	2. 兼容5.1代码
+	3. 自动检测是否带OTA，去掉手动选择
+	4. 按回车键开始拷贝
+	5. 去掉是否拷贝modem选项
+	6. 适配不同分辨率的屏幕
 -->
 <Html>
 <Head>
@@ -28,8 +36,10 @@ set ws=CreateObject("wscript.shell")
 Set Fso=CreateObject("Scripting.FileSystemObject")
 
 Sub Window_OnLoad
-Window.MoveTo 1520,100
-Window.ResizeTo 400,250
+Dim width,height
+width=CreateObject("HtmlFile").ParentWindow.Screen.AvailWidth
+Window.MoveTo width-400,100
+Window.ResizeTo 400,220
 End Sub
 
 '//////////////////////////////////////////////////////////////////
@@ -47,101 +57,169 @@ For Each match in matches
 Next
 End Function
 
-'//////////////////////////////////////////////////////////////////
+'/////////////获取输入值/////////////////////////////////////////////////////
 
 Sub Copy1()
 DL=document.getElementById("destination_link").value
 SL=document.getElementById("source_link").value
-MD=document.getElementById("modem").value
-OT=document.getElementById("ota").value
+
+'/////////////检测输入路径的环境/////////////////////////////////////////////////////
+
+flag=0
+
+If (Not Fso.FolderExists(SL&"\out")) Then
+	msgbox("代码路径有误，请确认后重试")
+	flag=1
+	self.close()
+End If
+
+If (Not Fso.FolderExists(DL)) Then
+	msgbox("目标路径不存在，请确认后重试")
+	flag=1
+	self.close()
+End If
+
+Set MyFolder_DL = Fso.GetFolder(DL&"\")
+Set Files_DL = MyFolder_DL.Files
+Set Folders_DL = MyFolder_DL.SubFolders
+For Each File in Files_DL
+	If (File.Name <> "") Then
+		msgbox("目标路径已存在文件，请删除后重试")
+		flag=1
+		Exit For
+		self.close()
+	End If
+Next	
+For Each Folder in Folders_DL
+	If (Folder.Name <> "") Then
+		msgbox("目标路径已存在文件夹，请删除后重试")
+		flag=1
+		Exit For
+		self.close()
+	End If
+Next
+
+'/////////////获取工程名/////////////////////////////////////////////////////
 
 Set MyFolder_PN = Fso.GetFolder(SL&"\out\target\product\")
 Set Folders = MyFolder_PN.SubFolders
 For Each Folder in Folders
-	FDN=Folder.Name&"_assetsOverlay"
-	If Fso.FolderExists(SL&"\out\target\product\"&FDN) Then
+	FDN=Folder.Name
+	If Fso.FileExists(SL&"\out\target\product\"&FDN&"\system.img") Then
 		PN=Folder.Name
+		Exit For
 	End If
 Next
+
+If PN="" Then
+	msgbox("代码路径下不存在system.img，确认后重试")
+	flag=1
+	self.close()
+End If
 
 L1=SL&"\out\target\product\"&PN&"\"
 L2=DL&"\"
 
-'//////////////////////////////////////////////////////////////////
 
-If MD="1" Then
-	Set MyFolder_AP = Fso.GetFolder(L1&"obj\CODEGEN\cgen\")
+'/////////////检测OTA文件/////////////////////////////////////////////////////	
+
+If (Not Fso.FileExists(L1&"target*")) Then
+	OT="1"
+Else
+	OT="2"	
+End If
+
+
+'/////////////检测modem文件路径/////////////////////////////////////////////////////	
+
+	If Fso.FolderExists(L1&"obj\CODEGEN") Then
+		MD1="obj\CODEGEN\cgen\"
+		MD2="obj\CUSTGEN\custom\modem\BPL*"	
+	ElseIf Fso.FolderExists(L1&"obj\CGEN") Then
+		MD1="obj\CGEN\"
+		Set MyFolder_BP = Fso.GetFolder(L1&"obj\ETC\")
+		Set Folders = MyFolder_BP.SubFolders
+		For Each Folder in Folders
+			If ReturnRegMatch("BPLGU",Folder.Name)="BPLGU" Then
+				FDN_BP=Folder.Name
+				Exit For
+			End If
+		Next	
+		MD2="obj\ETC\"&FDN_BP&"\BPL*"
+	Else 
+		msgbox("找不到obj\CODEGEN或obj\CGEN")
+		flag=1
+		self.close()
+	End If
+
+'/////////////报错标识位/////////////////////////////////////////////////////	
+
+If flag=0 Then
+
+'/////////////拷贝modem文件/////////////////////////////////////////////////////
+
+	Set MyFolder_AP = Fso.GetFolder(L1&MD1)
 	Set Files_AP = MyFolder_AP.Files
 	For Each File in Files_AP
 		FLN=File.Name&"_ENUM"
-		If Fso.FileExists(L1&"obj\CODEGEN\cgen\"&FLN) Then
+		If Fso.FileExists(L1&MD1&FLN) Then
 			FN=File.Name
 			Exit For
 		End If
 	Next	
     Fso.CreateFolder(L2&"modem")
-    Fso.copyfile L1&"obj\CODEGEN\cgen\"&FN,L2&"modem"&"\",false
-    Fso.copyfile L1&"obj\CUSTGEN\custom\modem\BPL*",L2&"modem"&"\",false
-End If
+    Fso.copyfile L1&MD1&FN,L2&"modem"&"\",false
+    Fso.copyfile L1&MD2,L2&"modem"&"\",false
+
+'/////////////拷贝软件/////////////////////////////////////////////////////
+		
+	Set MyFolder_Out = Fso.GetFolder(L1)
+	Set Files_Out = MyFolder_Out.Files	
+
+	If OT="1" Then
+		For Each File in Files_Out
+			If (ReturnRegMatch("system",File.Name) <> "system") Then
+				Fso.copyfile L1&File.Name,L2,false
+			End If	
+		Next
+	Fso.copyfile L1&"system.img",L2,false
+	End If	
+
+	If OT="2" Then    
+		For Each File in Files_Out
+			Select Case True
+				Case ReturnRegMatch("system",File.Name) = "system"
+				Case ReturnRegMatch("target",File.Name) = "target"
+				Case ReturnRegMatch("-ota-",File.Name) = "-ota-"
+				Case Else Fso.copyfile L1&File.Name,L2,false
+			End Select
+		Next	
+		Fso.copyfile L1&"system.img",L2,false
+		Fso.CreateFolder(L2&"OTA")
+		Fso.copyfile L1&"target*",L2&"OTA"&"\",false
+		Fso.copyfile L1&"*-ota-*",L2&"OTA"&"\",false
+	End If	
+
+	msgbox("copy success")
 
 '//////////////////////////////////////////////////////////////////
-	
-Set MyFolder_Out = Fso.GetFolder(L1)
-Set Files_Out = MyFolder_Out.Files
-
-If OT="1" Then
-	For Each File in Files_Out
-		If (ReturnRegMatch("system",File.Name) <> "system") Then
-			Fso.copyfile L1&File.Name,L2,false
-		End If	
-	Next
-Fso.copyfile L1&"system.img",L2,false
 End If
-
-If OT="2" Then    
-	For Each File in Files_Out
-		Select Case True
-			Case ReturnRegMatch("system",File.Name) = "system"
-			Case ReturnRegMatch("target",File.Name) = "target"
-			Case ReturnRegMatch("-ota-",File.Name) = "-ota-"
-			Case Else Fso.copyfile L1&File.Name,L2,false
-		End Select
-	Next	
-	Fso.copyfile L1&"system.img",L2,false
-	Fso.CreateFolder(L2&"OTA")
-	Fso.copyfile L1&"target*",L2&"OTA"&"\",false
-	Fso.copyfile L1&"*-ota-*",L2&"OTA"&"\",false
-End If
-
-msgbox("copy success")
-
 End Sub
 
 </Script>
 <Body bgcolor="White">
 
-<select id="modem" name="modem">
-<option value="1">拷贝modem</option>
-<option value="2">不拷贝modem</option>
-</select>
-
-<select id="ota" name="ota">
-<option value="1">不带OTA</option>
-<option value="2">带OTA</option>
-</select>
-<br>
-
-<br>代码路径（精确到alps，如：Z:\8312C\alps）：
+代码路径（精确到alps，如：Z:\8312C\alps）：
 <br><input id="source_link" type="text" size="20"/>
 <br>
 
-<br>目标路径：
+<br>目标文件夹路径（如F:\test）：
 <br><input id="destination_link" type="text" size="50"/>
 <br>
 <br>
 
 <Button OnClick="self.close()">Exit</Button>
 &nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp
-<Button OnClick="Copy1()">Copy!</Button>
+<input OnClick="Copy1()" type="submit" value="Copy!">
 </Body>
 </Html>
