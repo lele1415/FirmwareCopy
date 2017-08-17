@@ -11,8 +11,12 @@
     1. 去掉代码路径选择，改为手动输入
     2. 优化文件拷贝顺序，最后拷贝system.img
     3. 细节优化
+-----------------------    
+	版本1.4
+	1. 增加带OTA拷贝模式
+	2. 优化modem文件拷贝
+	3. 细节优化
 -->
-
 <Html>
 <Head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
@@ -28,16 +32,34 @@ Window.MoveTo 1520,100
 Window.ResizeTo 400,250
 End Sub
 
+'//////////////////////////////////////////////////////////////////
+
+Function ReturnRegMatch(patrn,str)
+Dim regEx,matches,match
+Set regEx = New RegExp
+regEx.Pattern = patrn
+regEx.IgnoreCase = true
+regEx.Global = true  '打开全局搜索
+Set matches = regEx.Execute(str)
+For Each match in matches
+	ReturnRegMatch = match.value
+	Exit For
+Next
+End Function
+
+'//////////////////////////////////////////////////////////////////
+
 Sub Copy1()
 DL=document.getElementById("destination_link").value
 SL=document.getElementById("source_link").value
 MD=document.getElementById("modem").value
+OT=document.getElementById("ota").value
 
-Set MyFolder = Fso.GetFolder(SL&"\out\target\product\")
-Set Folders = MyFolder.SubFolders
+Set MyFolder_PN = Fso.GetFolder(SL&"\out\target\product\")
+Set Folders = MyFolder_PN.SubFolders
 For Each Folder in Folders
-	FN=Folder.Name&"_assetsOverlay"
-	If Fso.FolderExists(SL&"\out\target\product\"&FN) Then
+	FDN=Folder.Name&"_assetsOverlay"
+	If Fso.FolderExists(SL&"\out\target\product\"&FDN) Then
 		PN=Folder.Name
 	End If
 Next
@@ -45,21 +67,52 @@ Next
 L1=SL&"\out\target\product\"&PN&"\"
 L2=DL&"\"
 
+'//////////////////////////////////////////////////////////////////
+
 If MD="1" Then
+	Set MyFolder_AP = Fso.GetFolder(L1&"obj\CODEGEN\cgen\")
+	Set Files_AP = MyFolder_AP.Files
+	For Each File in Files_AP
+		FLN=File.Name&"_ENUM"
+		If Fso.FileExists(L1&"obj\CODEGEN\cgen\"&FLN) Then
+			FN=File.Name
+			Exit For
+		End If
+	Next	
     Fso.CreateFolder(L2&"modem")
-    Fso.copyfile L1&"obj\CODEGEN\cgen\APDB*",L2&"modem"&"\",false
-    Fso.DeleteFile L2&"modem"&"\APDB*ENUM",True
+    Fso.copyfile L1&"obj\CODEGEN\cgen\"&FN,L2&"modem"&"\",false
     Fso.copyfile L1&"obj\CUSTGEN\custom\modem\BPL*",L2&"modem"&"\",false
 End If
 
-Set MyFolder1 = Fso.GetFolder(L1)
-Set Files = MyFolder1.Files
-For Each File in Files
-	If File.Name <> "system.img" Then 
-		Fso.copyfile L1&File.Name,L2,false
-	End If
-Next
+'//////////////////////////////////////////////////////////////////
+	
+Set MyFolder_Out = Fso.GetFolder(L1)
+Set Files_Out = MyFolder_Out.Files
+
+If OT="1" Then
+	For Each File in Files_Out
+		If (ReturnRegMatch("system",File.Name) <> "system") Then
+			Fso.copyfile L1&File.Name,L2,false
+		End If	
+	Next
 Fso.copyfile L1&"system.img",L2,false
+End If
+
+If OT="2" Then    
+	For Each File in Files_Out
+		Select Case True
+			Case ReturnRegMatch("system",File.Name) = "system"
+			Case ReturnRegMatch("target",File.Name) = "target"
+			Case ReturnRegMatch("-ota-",File.Name) = "-ota-"
+			Case Else Fso.copyfile L1&File.Name,L2,false
+		End Select
+	Next	
+	Fso.copyfile L1&"system.img",L2,false
+	Fso.CreateFolder(L2&"OTA")
+	Fso.copyfile L1&"target*",L2&"OTA"&"\",false
+	Fso.copyfile L1&"*-ota-*",L2&"OTA"&"\",false
+End If
+
 msgbox("copy success")
 
 End Sub
@@ -70,6 +123,11 @@ End Sub
 <select id="modem" name="modem">
 <option value="1">拷贝modem</option>
 <option value="2">不拷贝modem</option>
+</select>
+
+<select id="ota" name="ota">
+<option value="1">不带OTA</option>
+<option value="2">带OTA</option>
 </select>
 <br>
 
