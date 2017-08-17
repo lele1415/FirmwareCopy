@@ -24,6 +24,12 @@
 	4. 按回车键开始拷贝
 	5. 去掉是否拷贝modem选项
 	6. 适配不同分辨率的屏幕
+-----------------------  
+	版本1.6
+	1. 支持自动新建文件夹
+	2. 报错提示后不退出	
+	3. 修复OTA拷贝BUG
+	4. 支持不存在modem文件的软件拷贝
 -->
 <Html>
 <Head>
@@ -39,7 +45,7 @@ Sub Window_OnLoad
 Dim width,height
 width=CreateObject("HtmlFile").ParentWindow.Screen.AvailWidth
 Window.MoveTo width-400,100
-Window.ResizeTo 400,220
+Window.ResizeTo 400,270
 End Sub
 
 '//////////////////////////////////////////////////////////////////
@@ -57,84 +63,113 @@ For Each match in matches
 Next
 End Function
 
-'/////////////获取输入值/////////////////////////////////////////////////////
+Function getCheckedRadio(name)
+	Set radioObj=document.getElementsByName(name)
+	For i = 0 To radioObj.length
+        If radioObj(i).checked Then
+            getCheckedRadio= radioObj(i).value
+            Exit For
+        End If
+	Next
+End Function
+
+'/////////////获取路径输入值/////////////////////////////////////////////////////
 
 Sub Copy1()
 DL=document.getElementById("destination_link").value
 SL=document.getElementById("source_link").value
 
+'/////////////获取单选框的值/////////////////////////////////////////////////////	
+
+NFD=getCheckedRadio("new_folder")
+If NFD="new_folder" Then	
+	flag_nfd=1
+Else
+	flag_nfd=0
+End If
+
+'/////////////获取文件名输入值/////////////////////////////////////////////////////
+
+If flag_nfd=1 Then
+	NFN=document.getElementById("folder_name").value
+End If	
+
 '/////////////检测输入路径的环境/////////////////////////////////////////////////////
 
-flag=0
-
-If (Not Fso.FolderExists(SL&"\out")) Then
+Select Case True
+Case (Not Fso.FolderExists(SL&"\out"))
 	msgbox("代码路径有误，请确认后重试")
-	flag=1
-	self.close()
-End If
-
-If (Not Fso.FolderExists(DL)) Then
+	flag_lk=1
+Case (Not Fso.FolderExists(DL))
 	msgbox("目标路径不存在，请确认后重试")
-	flag=1
-	self.close()
-End If
+	flag_lk=1
+Case (flag_nfd=0)
+	Set MyFolder_DL = Fso.GetFolder(DL&"\")
+	Set Files_DL = MyFolder_DL.Files
+	Set Folders_DL = MyFolder_DL.SubFolders
+	For Each File in Files_DL
+		If (File.Name <> "") Then
+			flag_lk=1
+			Exit For
+		End If
+	Next	
+	For Each Folder in Folders_DL
+		If (Folder.Name <> "") Then
+			flag_lk=1
+			Exit For
+		End If
+	Next
+	If flag_lk=1 Then
+		msgbox("目标路径已存在文件或文件夹，请删除后重试")
+	End If
+Case (flag_nfd=1)
+	If NFN="" Then
+		msgbox("请输入文件夹名")
+		flag_lk=1
+	Else
+		DL=DL&"\"&NFN
+		If Fso.FolderExists(DL) Then
+			msgbox("输入的文件夹名与现有文件夹重名，请修改后重试")
+			flag_lk=1
+		Else	
+			Fso.CreateFolder(DL)	
+		End If
+	End If	
+End Select
 
-Set MyFolder_DL = Fso.GetFolder(DL&"\")
-Set Files_DL = MyFolder_DL.Files
-Set Folders_DL = MyFolder_DL.SubFolders
-For Each File in Files_DL
-	If (File.Name <> "") Then
-		msgbox("目标路径已存在文件，请删除后重试")
-		flag=1
-		Exit For
-		self.close()
-	End If
-Next	
-For Each Folder in Folders_DL
-	If (Folder.Name <> "") Then
-		msgbox("目标路径已存在文件夹，请删除后重试")
-		flag=1
-		Exit For
-		self.close()
-	End If
-Next
+'/////////////输入报错标识位/////////////////////////////////////////////////////	
+
+If flag_lk<>1 Then
 
 '/////////////获取工程名/////////////////////////////////////////////////////
 
-Set MyFolder_PN = Fso.GetFolder(SL&"\out\target\product\")
-Set Folders = MyFolder_PN.SubFolders
-For Each Folder in Folders
-	FDN=Folder.Name
-	If Fso.FileExists(SL&"\out\target\product\"&FDN&"\system.img") Then
-		PN=Folder.Name
-		Exit For
+	Set MyFolder_PN = Fso.GetFolder(SL&"\out\target\product\")
+	Set Folders = MyFolder_PN.SubFolders
+	For Each Folder in Folders
+		FDN=Folder.Name
+		If Fso.FileExists(SL&"\out\target\product\"&FDN&"\system.img") Then
+			PN=Folder.Name
+			Exit For
+		End If
+	Next
+
+	If PN="" Then
+		msgbox("代码路径下不存在system.img，确认后重试")
+		flag_sys=1
 	End If
-Next
 
-If PN="" Then
-	msgbox("代码路径下不存在system.img，确认后重试")
-	flag=1
-	self.close()
-End If
+	L1=SL&"\out\target\product\"&PN&"\"
+	L2=DL&"\"
 
-L1=SL&"\out\target\product\"&PN&"\"
-L2=DL&"\"
+'/////////////system.img报错标识位/////////////////////////////////////////////////////
 
-
-'/////////////检测OTA文件/////////////////////////////////////////////////////	
-
-If (Not Fso.FileExists(L1&"target*")) Then
-	OT="1"
-Else
-	OT="2"	
-End If
-
+If flag_sys <> 1 Then
 
 '/////////////检测modem文件路径/////////////////////////////////////////////////////	
 
-	If Fso.FolderExists(L1&"obj\CODEGEN") Then
+	If Fso.FolderExists(L1&"obj\CODEGEN\cgen") Then
 		MD1="obj\CODEGEN\cgen\"
-		MD2="obj\CUSTGEN\custom\modem\BPL*"	
+		MD2="obj\CUSTGEN\custom\modem\"
 	ElseIf Fso.FolderExists(L1&"obj\CGEN") Then
 		MD1="obj\CGEN\"
 		Set MyFolder_BP = Fso.GetFolder(L1&"obj\ETC\")
@@ -144,65 +179,85 @@ End If
 				FDN_BP=Folder.Name
 				Exit For
 			End If
-		Next	
-		MD2="obj\ETC\"&FDN_BP&"\BPL*"
-	Else 
-		msgbox("找不到obj\CODEGEN或obj\CGEN")
-		flag=1
-		self.close()
+		Next
+
+		If FDN_BP="" Then
+			flag_modem=1
+		End If
+
+		MD2="obj\ETC\"&FDN_BP&"\"
+	Else
+		flag_modem=1	
 	End If
+	
+	If flag_modem <> 1 Then
+		Set MyFolder_AP = Fso.GetFolder(L1&MD1)
+		Set Files_AP = MyFolder_AP.Files
+		For Each File in Files_AP
+			FLN=File.Name&"_ENUM"
+			If Fso.FileExists(L1&MD1&FLN) Then
+				FLN_AP=File.Name
+				Exit For
+			End If
+		Next
 
-'/////////////报错标识位/////////////////////////////////////////////////////	
+		If FLN_AP="" Then
+			flag_modem=1
+		End If
 
-If flag=0 Then
+		MD1=MD1&FLN_AP
+
+		Set MyFolder_BP = Fso.GetFolder(L1&MD2)
+		Set Files_BP = MyFolder_BP.Files
+		For Each File in Files_BP
+			If ReturnRegMatch("BPLGU",File.Name)="BPLGU" Then
+				FLN_BP=File.Name
+				Exit For
+			End If
+		Next
+
+		If FLN_BP="" Then
+			flag_modem=1
+		End If
+
+		MD2=MD2&FLN_BP
+	End If	
 
 '/////////////拷贝modem文件/////////////////////////////////////////////////////
 
-	Set MyFolder_AP = Fso.GetFolder(L1&MD1)
-	Set Files_AP = MyFolder_AP.Files
-	For Each File in Files_AP
-		FLN=File.Name&"_ENUM"
-		If Fso.FileExists(L1&MD1&FLN) Then
-			FN=File.Name
-			Exit For
-		End If
-	Next	
-    Fso.CreateFolder(L2&"modem")
-    Fso.copyfile L1&MD1&FN,L2&"modem"&"\",false
-    Fso.copyfile L1&MD2,L2&"modem"&"\",false
+	If flag_modem <> 1 Then	
+    	Fso.CreateFolder(L2&"modem")
+    	Fso.copyfile L1&MD1,L2&"modem"&"\",false
+    	Fso.copyfile L1&MD2,L2&"modem"&"\",false
+    End If
 
 '/////////////拷贝软件/////////////////////////////////////////////////////
-		
+
+'If 0=1 then		
 	Set MyFolder_Out = Fso.GetFolder(L1)
 	Set Files_Out = MyFolder_Out.Files	
 
-	If OT="1" Then
-		For Each File in Files_Out
-			If (ReturnRegMatch("system",File.Name) <> "system") Then
-				Fso.copyfile L1&File.Name,L2,false
-			End If	
-		Next
+	For Each File in Files_Out
+		Select Case True
+			Case ReturnRegMatch("system",File.Name) = "system"
+			Case ReturnRegMatch(".zip",File.Name) = ".zip" OT="1"
+			Case Else Fso.copyfile L1&File.Name,L2,false
+		End Select
+	Next	
 	Fso.copyfile L1&"system.img",L2,false
-	End If	
-
-	If OT="2" Then    
-		For Each File in Files_Out
-			Select Case True
-				Case ReturnRegMatch("system",File.Name) = "system"
-				Case ReturnRegMatch("target",File.Name) = "target"
-				Case ReturnRegMatch("-ota-",File.Name) = "-ota-"
-				Case Else Fso.copyfile L1&File.Name,L2,false
-			End Select
-		Next	
-		Fso.copyfile L1&"system.img",L2,false
+	If OT="1" Then
 		Fso.CreateFolder(L2&"OTA")
-		Fso.copyfile L1&"target*",L2&"OTA"&"\",false
-		Fso.copyfile L1&"*-ota-*",L2&"OTA"&"\",false
+		Fso.copyfile L1&"*.zip",L2&"OTA"&"\",false
+	End If
+
+	If flag_modem=1 Then
+		msgbox("拷贝成功！但没有modem文件！")
+	Else	
+		msgbox("拷贝成功！")
 	End If	
-
-	msgbox("copy success")
-
+'End If
 '//////////////////////////////////////////////////////////////////
+End If
 End If
 End Sub
 
@@ -216,10 +271,19 @@ End Sub
 <br>目标文件夹路径（如F:\test）：
 <br><input id="destination_link" type="text" size="50"/>
 <br>
+
+<input type="radio" name="new_folder" value="no_folder" checked="checked" /> 不新建文件夹
+<br>
+<input type="radio" name="new_folder" onclick="document.body.insertAdjacentHTML'beforeEnd','<input id=folder_name type=text size=30> '" value="new_folder" />在目标路径新建文件夹
+<br>
+&nbsp&nbsp&nbsp（在下面跳出的第一个框中输入文件名）
+
+<br>
 <br>
 
 <Button OnClick="self.close()">Exit</Button>
-&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp
+&nbsp&nbsp&nbsp&nbsp
 <input OnClick="Copy1()" type="submit" value="Copy!">
+
 </Body>
 </Html>
