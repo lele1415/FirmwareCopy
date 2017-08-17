@@ -3,6 +3,9 @@
 -----------------------
     版本1.1
     1. 去掉拷贝方式选择
+-----------------------
+    版本1.2
+    1. 自动获取工程名
 -->
 
 <Html>
@@ -22,9 +25,17 @@ End Sub
 
 Sub Copy1()
 DL=document.getElementById("destination_link").value
-PN=document.getElementById("project_name").value
 SL=document.getElementById("source_link").value
-B1=document.getElementById("mode1").value
+B1=document.getElementById("mode").value
+
+Set MyFolder = Fso.GetFolder(SL&"out\target\product\")
+Set Folders = MyFolder.SubFolders
+For Each Folder in Folders
+	FN=Folder.Name&"_assetsOverlay"
+	If Fso.FolderExists(SL&"\out\target\product\"&FN) Then
+		PN=Folder.Name
+	End If
+Next
 
 L1=SL&"out\target\product\"&PN&"\"
 L2=DL&"\"
@@ -35,7 +46,6 @@ If B1="1" Then
     Fso.DeleteFile L2&"modem"&"\APDB*ENUM",True
     Fso.copyfile L1&"obj\CUSTGEN\custom\modem\BPL*",L2&"modem"&"\",false
 End If
-
 
 Fso.copyfile L1&"*",L2,false
 msgbox("copy success")
@@ -53,12 +63,11 @@ End Sub
 <option value="Z:\backups\alps\">BM</option>
 </select>
 
-<select id="mode1" name="mode1">
+<select id="mode" name="mode">
 <option value="1">拷贝modem</option>
 <option value="2">不拷贝modem</option>
 </select>
-<br>工程名：
-<br><input id="project_name" type="text" size="15"/>
+
 <br>目标路径：
 <br><input id="destination_link" type="text" size="50"/>
 <br>
