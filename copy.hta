@@ -52,6 +52,11 @@
     版本2.1
     1. 修改手动输入代码路径功能（路径精确到out目录）
     2. 代码整理
+-----------------------  
+    版本2.2
+    1. 代码路径在txt文件中保存和读取
+    2. 代码路径选择改为多行显示
+    3. 点击任意代码路径后，自动清空手动输入框的内容
 -->
 <Html>
 <Head>
@@ -73,25 +78,10 @@
 <br>
 <fieldset>
 <legend>代码路径</legend>
-<select id="source_link" name="link">
-<option value="Z:\8312C\alps">Z:\8312C\alps</option>
-<option value="Z:\8312C_2\alps">Z:\8312C_2\alps</option>
-<option value="Z:\backups\8312C\alps">Z:\backups\8312C\alps</option>
-<option value="Z:\8312D\alps">Z:\8312D\alps</option>
-<option value="Z:\MT8312\alps">Z:\MT8312\alps</option>
-<option value="Z:\l18321G_git\alps">Z:\l18321G_git\alps</option>
-<option value="Z:\l18312cw_git\alps">Z:\l18312cw_git\alps</option>
-<option value="Z:\l18312cw_git_222\alps">Z:\l18312cw_git_222\alps</option>
-<option value="Z:\l18127_git\alps">Z:\l18127_git\alps</option>
-<option value="Z:\l18163_git\alps">Z:\l18163_git\alps</option>
-<option value="Z:\backups\l18163s_git\alps">Z:\backups\l18163s_git\alps</option>
-<option value="Z:\m08127_git\alps">Z:\m08127_git\alps</option>
-<option value="Z:\m08127_git2\alps">Z:\m08127_git2\alps</option>
-<option value="Z:\M08783T_git\alps">Z:\M08783T_git\alps</option>
-</select>
+<select id="allCodePathList_id" onclick="cleanInputPath()" multiple="multiple" size="5"></select>
 <br>手动输入（out所在的路径，例如Z:\8312C\alps\out）
 <br>
-<input id="source_link_input" type="text" size="50"/>
+<input id="codePathFromInput" type="text" size="50"/>
 </fieldset>
 
 <br>
@@ -131,69 +121,91 @@
 
 <Script Language="JavaScript">
 
-    function addInputBox() {
-        var obj = document.getElementById("inputbox1");
-        var count = obj.getElementsByTagName("input").length;
-        if(!(count > 0)){
-            var input = document.createElement("input");
-            input.id = "folder_name";
-            input.type = "text";
-            input.size = 50;
+function addInputBox() {
+    var obj = document.getElementById("inputbox1");
+    var count = obj.getElementsByTagName("input").length;
+    if(!(count > 0)){
+        var input = document.createElement("input");
+        input.id = "folder_name";
+        input.type = "text";
+        input.size = 50;
 
-            var input_bt1 = document.createElement("input");
-            input_bt1.id = "getVersion1";
-            input_bt1.type = "button";
-            input_bt1.onclick = function(){getCustomBuildVersion("display.id")};
-            input_bt1.value = "display.id"
+        var input_bt1 = document.createElement("input");
+        input_bt1.id = "getVersion1";
+        input_bt1.type = "button";
+        input_bt1.onclick = function(){getCustomBuildVersion("display.id")};
+        input_bt1.value = "display.id"
 
-            var input_bt2 = document.createElement("input");
-            input_bt2.id = "getVersion2";
-            input_bt2.type = "button";
-            input_bt2.onclick = function(){getCustomBuildVersion("build.version")};
-            input_bt2.value = "build.version"
-         
-            obj.appendChild(input);
-            obj.appendChild(input_bt1);
-            obj.appendChild(input_bt2);
-        }    
-    }
+        var input_bt2 = document.createElement("input");
+        input_bt2.id = "getVersion2";
+        input_bt2.type = "button";
+        input_bt2.onclick = function(){getCustomBuildVersion("build.version")};
+        input_bt2.value = "build.version"
+     
+        obj.appendChild(input);
+        obj.appendChild(input_bt1);
+        obj.appendChild(input_bt2);
+    }    
+}
 
-    function removeInputBox() {
-        var obj = document.getElementById("inputbox1");
-        var count = obj.getElementsByTagName("input").length;
-        if(count > 0){
-            var child1 = document.getElementById("folder_name");
-            var child2 = document.getElementById("getVersion1");
-            var child3 = document.getElementById("getVersion2");
-            obj.removeChild(child1); 
-            obj.removeChild(child2); 
-            obj.removeChild(child3); 
-        }     
-    }
+function removeInputBox() {
+    var obj = document.getElementById("inputbox1");
+    var count = obj.getElementsByTagName("input").length;
+    if(count > 0){
+        var child1 = document.getElementById("folder_name");
+        var child2 = document.getElementById("getVersion1");
+        var child3 = document.getElementById("getVersion2");
+        obj.removeChild(child1); 
+        obj.removeChild(child2); 
+        obj.removeChild(child3); 
+    }     
+}
 
-    function modemCount(){
-        var i = document.getElementById("modem_count").innerHTML;
-        i++;
-        document.getElementById("modem_count").innerHTML = i; 
-    }
+function modemCount(){
+    var i = document.getElementById("modem_count").innerHTML;
+    i++;
+    document.getElementById("modem_count").innerHTML = i; 
+}
 
-    function softwareCount(){
-        var i = document.getElementById("software_count").innerHTML;
-        i++;
-        document.getElementById("software_count").innerHTML =  i; 
-    }
+function softwareCount(){
+    var i = document.getElementById("software_count").innerHTML;
+    i++;
+    document.getElementById("software_count").innerHTML =  i; 
+}
 
-    function otaCount(){
-        var i = document.getElementById("ota_count").innerHTML;
-        i++;
-        document.getElementById("ota_count").innerHTML =  i; 
-    }
+function otaCount(){
+    var i = document.getElementById("ota_count").innerHTML;
+    i++;
+    document.getElementById("ota_count").innerHTML =  i; 
+}
 
-    function cleanCount(){
-        document.getElementById("modem_count").innerHTML =  0; 
-        document.getElementById("software_count").innerHTML =  0; 
-        document.getElementById("ota_count").innerHTML =  0; 
-    }
+function cleanCount(){
+    document.getElementById("modem_count").innerHTML =  0; 
+    document.getElementById("software_count").innerHTML =  0; 
+    document.getElementById("ota_count").innerHTML =  0; 
+}
+
+function option_creat(optionValue, optionInnerHTML)
+{
+    var option = document.createElement("option");
+    option.value = optionValue;
+    option.innerHTML = optionInnerHTML;
+
+    return option;
+}
+
+function parentNode_appendChild(parentNodeId, node)
+{
+    var parentNode = document.getElementById(parentNodeId);
+    parentNode.appendChild(node);
+}
+
+
+function addOption(SelectId, OptionName) 
+{
+    var option = option_creat(OptionName, OptionName);
+    parentNode_appendChild(SelectId, option);
+}
 
 </Script>
 
@@ -210,6 +222,10 @@ Dim ws, Fso
 set ws = CreateObject("wscript.shell")
 Set Fso = CreateObject("Scripting.FileSystemObject")
 
+Dim allCodePathTxt, allCodePathListId
+allCodePathTxt = "allCodePath.txt"
+allCodePathListId = "allCodePathList_id"
+
 Dim sTargetFolderPath, sCodeOutPath, sCodeOutProjectPath, sNewFolderName, sProjectName
 
 Dim bNotCopySoftware, bContinue, bTargetFolderFileExist, bNewFolder, bCopyOta
@@ -222,6 +238,8 @@ sL1_BP = "obj\ETC\"
 
 Dim sModemFolderPath_AP, sModemFolderPath_BP, sModemFilePath_AP, sModemFilePath_BP
 Dim otaFilePath, sOtaFileName_tf, sOtaFileName_ota, sOtaFileName_objtf
+
+ReadCodePath allCodePathTxt, allCodePathListId
 
 
 '//////////////////////////////////////////////////////////////////
@@ -279,6 +297,31 @@ End Function
 '/////////////////////////////////////////////////////////////
 '/////////////////////////////////////////////////////////////
 
+Function ReadCodePath(codePathTxtName, codePathListId)
+    Dim txtPath, oTxt, codePathCount, sTmp, continue
+    txtPath = ws.CurrentDirectory & "\" & codePathTxtName
+    codePathCount = 0
+    continue = True
+    If Fso.FileExists(txtPath) Then
+        Set oTxt = fso.OpenTextFile(txtPath,1)
+    Else
+        MsgBox("代码路径文件不存在！")
+        continue = False
+    End If
+
+    If continue Then
+        Do Until oTxt.AtEndOfStream
+            sTmp = oTxt.ReadLine
+            If sTmp <> "" Then
+                addOption codePathListId, sTmp
+            End If
+        Loop
+    End If
+End Function
+
+Function cleanInputPath()
+    document.getElementById("codePathFromInput").value = ""
+End Function
 
 Function initBoolean()
     bNotCopySoftware = False
@@ -291,12 +334,12 @@ End Function
 Function getInputValue()
     Dim sCodePathInput
     sTargetFolderPath = document.getElementById("destination_link").value & "\"
-    sCodePathInput = document.getElementById("source_link_input").value
+    sCodePathInput = document.getElementById("codePathFromInput").value
 
     If sCodePathInput <> "" Then
         sCodeOutPath = sCodePathInput
     Else
-        sCodeOutPath = document.getElementById("source_link").value & "\out"
+        sCodeOutPath = document.getElementById(allCodePathListId).value & "\out"
     End If 
 
     If getCheckedRadio("new_folder") = "new_folder" Then  
@@ -561,7 +604,7 @@ Function getObjOtaFilePath()
         Set oFile = oFolder.Files          
         For Each File in oFile
             sTmp = File.Name
-            If InStr(sTmp, "obj/-target_files-") > 0 Then
+            If InStr(sTmp, "-target_files-") > 0 Then
                 sOtaFileName_objtf = sTmp
                 Exit For
             End If
