@@ -44,6 +44,10 @@
     版本1.9
     1. 增加获取版本号作为文件夹名的功能
     2. 解决只有AP文件情况下不拷贝modem的问题
+-----------------------  
+    版本2.0
+    1. 增加手动输入代码路径的方式
+    2. 手动选择是否拷贝OTA文件以及对应的文件
 -->
 <Html>
 <Head>
@@ -64,6 +68,7 @@
 
 <br>
 <fieldset>
+<legend>代码路径</legend>
 <select id="source_link" name="link">
 <option value="Z:\8312C\alps">Z:\8312C\alps</option>
 <option value="Z:\8312C_2\alps">Z:\8312C_2\alps</option>
@@ -80,6 +85,9 @@
 <option value="Z:\m08127_git2\alps">Z:\m08127_git2\alps</option>
 <option value="Z:\M08783T_git\alps">Z:\M08783T_git\alps</option>
 </select>
+<br>手动输入（out所在的路径）
+<br>
+<input id="source_link_input" type="text" size="50"/>
 </fieldset>
 
 <br>
@@ -93,11 +101,21 @@
     <legend>是否在目标路径新建文件夹：</legend>
     <input type="radio" name="new_folder" onclick=removeInputBox() value="no_folder" /> 否
     <input id="addInputBox" type="radio" name="new_folder" onclick=addInputBox() value="new_folder" checked="checked" >是
-    <br>
+    <br>获取版本号作为文件夹名
     <div id="inputbox1">
     <input id="folder_name" type="text" size=50 />
-    <input id="getVersion" type="button" onclick="getCustomBuildVersion()" value="getVersion" />
+    <input id="getVersion1" type="button" onclick="getCustomBuildVersion('display.id')" value="display.id" />
+    <input id="getVersion2" type="button" onclick="getCustomBuildVersion('build.version')" value="build.version" />
     </div>
+</fieldset>
+
+<fieldset>
+    <legend>OTA文件：</legend>
+    <input type="radio" name="otaFilePicker" value="no_ota" checked="checked" />no OTA
+    <br>
+    <input type="radio" name="otaFilePicker" value="target_files-package" />target_files-package
+    <input type="radio" name="otaFilePicker" value="-ota-" />-ota-
+    <input type="radio" name="otaFilePicker" value="-target_files-" />-target_files-
 </fieldset>
 
 <br>
@@ -118,14 +136,21 @@
             input.type = "text";
             input.size = 50;
 
-            var input_bt = document.createElement("input");
-            input_bt.id = "getVersion";
-            input_bt.type = "button";
-            input_bt.onclick = function(){getCustomBuildVersion()};
-            input_bt.value = "getVersion"
+            var input_bt1 = document.createElement("input");
+            input_bt1.id = "getVersion1";
+            input_bt1.type = "button";
+            input_bt1.onclick = function(){getCustomBuildVersion("display.id")};
+            input_bt1.value = "display.id"
+
+            var input_bt2 = document.createElement("input");
+            input_bt2.id = "getVersion2";
+            input_bt2.type = "button";
+            input_bt2.onclick = function(){getCustomBuildVersion("build.version")};
+            input_bt2.value = "build.version"
          
             obj.appendChild(input);
-            obj.appendChild(input_bt);
+            obj.appendChild(input_bt1);
+            obj.appendChild(input_bt2);
         }    
     }
 
@@ -134,9 +159,11 @@
         var count = obj.getElementsByTagName("input").length;
         if(count > 0){
             var child1 = document.getElementById("folder_name");
-            var child2 = document.getElementById("getVersion");
+            var child2 = document.getElementById("getVersion1");
+            var child3 = document.getElementById("getVersion2");
             obj.removeChild(child1); 
             obj.removeChild(child2); 
+            obj.removeChild(child3); 
         }     
     }
 
@@ -168,16 +195,16 @@
 
 <Script Language="VBScript">
 
+Dim ws, Fso, DL, SL, debug_flag
 set ws=CreateObject("wscript.shell")
 Set Fso=CreateObject("Scripting.FileSystemObject")
-
 debug_flag = false
 
 Sub Window_OnLoad
 Dim width,height
 width=CreateObject("HtmlFile").ParentWindow.Screen.AvailWidth
 Window.MoveTo width-400,100
-Window.ResizeTo 400,500
+Window.ResizeTo 400,650
 End Sub
 
 '//////////////////////////////////////////////////////////////////
@@ -206,20 +233,32 @@ Function getCheckedRadio(name)
 End Function
 
 Sub Sleep(MSecs)  
-     Dim fso
-     Dim objOutputFile
-  
-     Set fso = CreateObject("Scripting.FileSystemObject") 
-     If Fso.FileExists("sleeper.vbs")=False Then 
-         Set objOutputFile = fso.CreateTextFile("sleeper.vbs", True) 
-         objOutputFile.Write "wscript.sleep WScript.Arguments(0)" 
-         objOutputFile.Close 
-     End If 
-     CreateObject("WScript.Shell").Run "sleeper.vbs " & MSecs,1 , True 
- End Sub
+    Dim fso
+    Dim objOutputFile
 
-Function getCustomBuildVersion()
-    SL=document.getElementById("source_link").value
+    Set fso = CreateObject("Scripting.FileSystemObject") 
+    If Fso.FileExists("sleeper.vbs")=False Then 
+        Set objOutputFile = fso.CreateTextFile("sleeper.vbs", True) 
+        objOutputFile.Write "wscript.sleep WScript.Arguments(0)" 
+        objOutputFile.Close 
+    End If 
+    CreateObject("WScript.Shell").Run "sleeper.vbs " & MSecs,1 , True 
+End Sub
+
+Function getInputValue()
+    Dim SourcePathInput, SourcePath
+    DL=document.getElementById("destination_link").value
+    SourcePathInput = document.getElementById("source_link_input").value
+    SourcePath=document.getElementById("source_link").value
+    If SourcePathInput <> "" Then
+        SL = SourcePathInput
+    Else
+        SL = SourcePath
+    End If
+End Function
+
+Function getCustomBuildVersion(which)
+    getInputValue()
     LK = SL&"\out\target\product"
     If Fso.FolderExists(LK) Then
         Set MyFolder_PN = Fso.GetFolder(LK)
@@ -235,7 +274,7 @@ Function getCustomBuildVersion()
         Set fread = fso.opentextfile(LK&"\system\build.prop",1)
         Do Until fread.AtEndOfStream
             strLine = fread.ReadLine
-            If (InStr(SL,"l1") > 0 Or InStr(SL,"MT8321") > 0 Or InStr(SL,"m0") > 0) Then
+            If which = "display.id" Then
                 If InStr(strLine,"ro.build.display.id") > 0 Then
                     document.getElementById("folder_name").value = Trim(Mid(strLine,InStr(strLine,"=")+1))
                     Exit Do
@@ -257,8 +296,7 @@ End Function
 
 Sub Copy1()
 cleanCount()
-DL=document.getElementById("destination_link").value
-SL=document.getElementById("source_link").value
+getInputValue()
 
 '/////////////获取单选框的值/////////////////////////////////////////////////////  
 
@@ -423,10 +461,10 @@ If flag_lk<>1 Then
             For Each File in Files_Out
                 Select Case True
                     Case ReturnRegMatch("system",File.Name) = "system"
-                    Case ReturnRegMatch("-ota-",File.Name) = "-ota-"
                     Case ReturnRegMatch("target_files-",File.Name) = "target_files-"
                         OTA_FN1=File.Name
-                        OT="1"
+                    Case ReturnRegMatch("-ota-",File.Name) = "-ota-"
+                        OTA_FN2=File.Name
                     Case Else 
                         Fso.copyfile L1&File.Name,L2,false
                         softwareCount()
@@ -438,32 +476,39 @@ If flag_lk<>1 Then
 
 '/////////////拷贝OTA文件/////////////////////////////////////////////////////
 
-            If OT="1" Then
-                Fso.CreateFolder(L2&"OTA")
-                document.getElementById("ota_count1").innerHTML = 2
-                Sleep(1)
-                Fso.copyfile L1&OTA_FN1,L2&"OTA"&"\",false
-                otaCount()
+            If getCheckedRadio("otaFilePicker") <> "no_ota" Then
                 If Fso.FolderExists(L1&"obj\PACKAGING\target_files_intermediates") Then
                     Set MyFolder_OTA = Fso.GetFolder(L1&"obj\PACKAGING\target_files_intermediates")
                     Set Files_OTA = MyFolder_OTA.Files          
                     For Each File in Files_OTA
                         If ReturnRegMatch("-target_files-",File.Name) = "-target_files-" Then
-                            OTA_FN2=File.Name
+                            OTA_FN3=File.Name
                             Exit For
                         End If
-                    Next    
-                    If OTA_FN2 <> "" Then    
-                        Sleep(1)
-                        Fso.copyfile L1&"obj\PACKAGING\target_files_intermediates\"&OTA_FN2,L2&"OTA"&"\",false
-                        otaCount()
-                    Else
-                        msgbox("数联OTA文件缺失 obj\PACKAGING\target_files_intermediates\")    
-                    End If
+                    Next
+                End If
+
+                Select Case getCheckedRadio("otaFilePicker")
+                    Case "target_files-package"
+                        otaFilePath = OTA_FN1
+                    Case "-ota-"
+                        otaFilePath = OTA_FN2
+                    Case "-target_files-"
+                        otaFilePath = "obj\PACKAGING\target_files_intermediates\"&OTA_FN3
+                End Select
+
+                If otaFilePath <> "" Then
+                    otaFilePath = L1&otaFilePath
+
+                    Fso.CreateFolder(L2&"OTA")
+                    document.getElementById("ota_count1").innerHTML = 1
+                    Sleep(1)
+                    Fso.copyfile otaFilePath, L2&"OTA"&"\", false
+                    otaCount()
                 Else
-                    msgbox("数联OTA文件路径不存在 obj\PACKAGING\target_files_intermediates")       
-                End If    
-            End If     
+                    msgbox("OTA文件不存在")       
+                End If
+            End If      
 
             If flag_modem=1 Then
                 msgbox("拷贝成功！不存在modem文件！")
