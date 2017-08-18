@@ -48,6 +48,10 @@
     版本2.0
     1. 增加手动输入代码路径的方式
     2. 手动选择是否拷贝OTA文件以及对应的文件
+-----------------------  
+    版本2.1
+    1. 修改手动输入代码路径功能（路径精确到out目录）
+    2. 代码整理
 -->
 <Html>
 <Head>
@@ -85,7 +89,7 @@
 <option value="Z:\m08127_git2\alps">Z:\m08127_git2\alps</option>
 <option value="Z:\M08783T_git\alps">Z:\M08783T_git\alps</option>
 </select>
-<br>手动输入（out所在的路径）
+<br>手动输入（out所在的路径，例如Z:\8312C\alps\out）
 <br>
 <input id="source_link_input" type="text" size="50"/>
 </fieldset>
@@ -115,7 +119,7 @@
     <br>
     <input type="radio" name="otaFilePicker" value="target_files-package" />target_files-package
     <input type="radio" name="otaFilePicker" value="-ota-" />-ota-
-    <input type="radio" name="otaFilePicker" value="-target_files-" />-target_files-
+    <input type="radio" name="otaFilePicker" value="obj/-target_files-" />obj/-target_files-
 </fieldset>
 
 <br>
@@ -123,7 +127,7 @@
 
 <Button OnClick="self.close()">Exit</Button>
 &nbsp&nbsp&nbsp&nbsp
-<input OnClick="Copy1()" type="submit" value="Copy!">
+<input OnClick="runCopy()" type="submit" value="Copy!">
 
 <Script Language="JavaScript">
 
@@ -176,57 +180,57 @@
     function softwareCount(){
         var i = document.getElementById("software_count").innerHTML;
         i++;
-        document.getElementById("software_count").innerHTML= i; 
+        document.getElementById("software_count").innerHTML =  i; 
     }
 
     function otaCount(){
         var i = document.getElementById("ota_count").innerHTML;
         i++;
-        document.getElementById("ota_count").innerHTML= i; 
+        document.getElementById("ota_count").innerHTML =  i; 
     }
 
     function cleanCount(){
-        document.getElementById("modem_count").innerHTML= 0; 
-        document.getElementById("software_count").innerHTML= 0; 
-        document.getElementById("ota_count").innerHTML= 0; 
+        document.getElementById("modem_count").innerHTML =  0; 
+        document.getElementById("software_count").innerHTML =  0; 
+        document.getElementById("ota_count").innerHTML =  0; 
     }
 
 </Script>
 
-<Script Language="VBScript">
-
-Dim ws, Fso, DL, SL, debug_flag
-set ws=CreateObject("wscript.shell")
-Set Fso=CreateObject("Scripting.FileSystemObject")
-debug_flag = false
+<Script Language = "VBScript">
 
 Sub Window_OnLoad
 Dim width,height
-width=CreateObject("HtmlFile").ParentWindow.Screen.AvailWidth
+width = CreateObject("HtmlFile").ParentWindow.Screen.AvailWidth
 Window.MoveTo width-400,100
 Window.ResizeTo 400,650
 End Sub
 
+Dim ws, Fso
+set ws = CreateObject("wscript.shell")
+Set Fso = CreateObject("Scripting.FileSystemObject")
+
+Dim sTargetFolderPath, sCodeOutPath, sCodeOutProjectPath, sNewFolderName, sProjectName
+
+Dim bNotCopySoftware, bContinue, bTargetFolderFileExist, bNewFolder, bCopyOta
+
+Dim sKK_AP, sKK_BP, sL1_AP, sL1_BP
+sKK_AP = "obj\CODEGEN\cgen\"
+sKK_BP = "obj\CUSTGEN\custom\modem\"
+sL1_AP = "obj\CGEN\"
+sL1_BP = "obj\ETC\"
+
+Dim sModemFolderPath_AP, sModemFolderPath_BP, sModemFilePath_AP, sModemFilePath_BP
+Dim otaFilePath, sOtaFileName_tf, sOtaFileName_ota, sOtaFileName_objtf
+
+
 '//////////////////////////////////////////////////////////////////
 
-Function ReturnRegMatch(patrn,str)
-Dim regEx,matches,match
-Set regEx = New RegExp
-regEx.Pattern = patrn
-regEx.IgnoreCase = true
-regEx.Global = true  '打开全局搜索
-Set matches = regEx.Execute(str)
-For Each match in matches
-    ReturnRegMatch = match.value
-    Exit For
-Next
-End Function
-
 Function getCheckedRadio(name)
-    Set radioObj=document.getElementsByName(name)
+    Set radioObj = document.getElementsByName(name)
     For i = 0 To radioObj.length
         If radioObj(i).checked Then
-            getCheckedRadio= radioObj(i).value
+            getCheckedRadio =  radioObj(i).value
             Exit For
         End If
     Next
@@ -237,7 +241,7 @@ Sub Sleep(MSecs)
     Dim objOutputFile
 
     Set fso = CreateObject("Scripting.FileSystemObject") 
-    If Fso.FileExists("sleeper.vbs")=False Then 
+    If Fso.FileExists("sleeper.vbs") = False Then 
         Set objOutputFile = fso.CreateTextFile("sleeper.vbs", True) 
         objOutputFile.Write "wscript.sleep WScript.Arguments(0)" 
         objOutputFile.Close 
@@ -245,281 +249,339 @@ Sub Sleep(MSecs)
     CreateObject("WScript.Shell").Run "sleeper.vbs " & MSecs,1 , True 
 End Sub
 
-Function getInputValue()
-    Dim SourcePathInput, SourcePath
-    DL=document.getElementById("destination_link").value
-    SourcePathInput = document.getElementById("source_link_input").value
-    SourcePath=document.getElementById("source_link").value
-    If SourcePathInput <> "" Then
-        SL = SourcePathInput
-    Else
-        SL = SourcePath
-    End If
-End Function
-
 Function getCustomBuildVersion(which)
+    initBoolean()
     getInputValue()
-    LK = SL&"\out\target\product"
-    If Fso.FolderExists(LK) Then
-        Set MyFolder_PN = Fso.GetFolder(LK)
-        Set Folders = MyFolder_PN.SubFolders
-        For Each Folder in Folders
-            FDN=Folder.Name
-            If Fso.FolderExists(LK&"\"&FDN&"\system") Then
-                PN1=Folder.Name
-                Exit For 
-            End If
-        Next
-        LK=LK&"\"&PN1
-        Set fread = fso.opentextfile(LK&"\system\build.prop",1)
+    If Fso.FolderExists(sCodeOutPath) Then
+        getProjectName()
+        Set fread = fso.opentextfile(sCodeOutProjectPath & "system\build.prop", 1)
         Do Until fread.AtEndOfStream
-            strLine = fread.ReadLine
+            sTmp = fread.ReadLine
             If which = "display.id" Then
-                If InStr(strLine,"ro.build.display.id") > 0 Then
-                    document.getElementById("folder_name").value = Trim(Mid(strLine,InStr(strLine,"=")+1))
+                If InStr(sTmp,"ro.build.display.id") > 0 Then
+                    document.getElementById("folder_name").value = Trim(Mid(sTmp,InStr(sTmp,"=")+1))
                     Exit Do
                 End If
             Else
-                If InStr(strLine,"ro.custom.build.version") > 0 Then
-                    document.getElementById("folder_name").value = Trim(Mid(strLine,InStr(strLine,"=")+1))
+                If InStr(sTmp,"ro.custom.build.version") > 0 Then
+                    document.getElementById("folder_name").value = Trim(Mid(sTmp,InStr(sTmp,"=")+1))
                     Exit Do
                 End If
             End If
         Loop
     Else
-        getCustomBuildVersion = ""
-        msgbox("out不存在")
+        msgbox("代码路径不存在out目录，请确认后重试")
+    End If
+
+End Function
+
+
+'/////////////////////////////////////////////////////////////
+'/////////////////////////////////////////////////////////////
+
+
+Function initBoolean()
+    bNotCopySoftware = False
+    bContinue = True
+    bTargetFolderFileExist = False
+    bNewFolder = True
+    bCopyOta = False
+End Function
+
+Function getInputValue()
+    Dim sCodePathInput
+    sTargetFolderPath = document.getElementById("destination_link").value & "\"
+    sCodePathInput = document.getElementById("source_link_input").value
+
+    If sCodePathInput <> "" Then
+        sCodeOutPath = sCodePathInput
+    Else
+        sCodeOutPath = document.getElementById("source_link").value & "\out"
+    End If 
+
+    If getCheckedRadio("new_folder") = "new_folder" Then  
+        sNewFolderName = document.getElementById("folder_name").value
+        bNewFolder = True
+    Else
+        bNewFolder = False
     End If
 End Function
 
-'/////////////获取路径输入值/////////////////////////////////////////////////////
+Function checkInputInfo()
 
-Sub Copy1()
-cleanCount()
-getInputValue()
+    '/////////////检测输入路径的环境/////////////////////////////////////////////////////
 
-'/////////////获取单选框的值/////////////////////////////////////////////////////  
-
-NFD=getCheckedRadio("new_folder")
-If NFD="new_folder" Then    
-    flag_nfd=1
-End If
-
-'/////////////获取文件名输入值/////////////////////////////////////////////////////
-
-If flag_nfd=1 Then
-    NFN=document.getElementById("folder_name").value
-End If  
-
-'/////////////检测输入路径的环境/////////////////////////////////////////////////////
-
-If (Not Fso.FolderExists(SL&"\out")) Then
-    msgbox("代码路径有误，请确认后重试")
-    flag_lk=1
-ElseIf (Not Fso.FolderExists(DL)) Then
-    msgbox("目标路径不存在，请确认后重试")
-    flag_lk=1
-ElseIf (flag_nfd=1) Then
-    If NFN="" Then
-        msgbox("请输入文件夹名")
-        flag_lk=1
+    If (Not Fso.FolderExists(sCodeOutPath)) Then
+        msgbox("代码路径不存在out目录，请确认后重试")
+        bContinue = False
+    ElseIf (Not Fso.FolderExists(sTargetFolderPath)) Then
+        msgbox("目标路径不存在，请确认后重试")
+        bContinue = False
+    ElseIf bNewFolder Then
+        If sNewFolderName = "" Then
+            msgbox("请输入文件夹名")
+            bContinue = False
+        Else
+            sTargetFolderPath = sTargetFolderPath & sNewFolderName & "\"
+            If Fso.FolderExists(sTargetFolderPath) Then
+                msgbox("输入的文件夹名与现有文件夹重名，请修改后重试")
+                bContinue = False
+            Else    
+                Fso.CreateFolder(sTargetFolderPath) 
+            End If
+        End If  
     Else
-        DL=DL&"\"&NFN
-        If Fso.FolderExists(DL) Then
-            msgbox("输入的文件夹名与现有文件夹重名，请修改后重试")
-            flag_lk=1
-        Else    
-            Fso.CreateFolder(DL)    
-        End If
-    End If  
-Else
-    Set MyFolder_DL = Fso.GetFolder(DL&"\")
-    Set Files_DL = MyFolder_DL.Files
-    Set Folders_DL = MyFolder_DL.SubFolders
-    For Each File in Files_DL
-        msgbox("目标路径已存在文件，请删除后重试")
-        flag_lk=1
-        flag_lk_file=1
-        Exit For
-    Next
-    If flag_lk_file <> 1 Then
-        For Each Folder in Folders_DL
-            msgbox("目标路径已存在文件夹，请删除后重试")             
-            flag_lk=1
+        Set oFolder = Fso.GetFolder(sTargetFolderPath)
+        Set oFiles = oFolder.Files
+        Set oSubFolders = oFolder.SubFolders
+        bTargetFolderFileExist = False
+        For Each File in oFiles
+            msgbox("目标路径已存在文件，请删除后重试")
+            bContinue = False
+            bTargetFolderFileExist = True
             Exit For
         Next
-    End If    
-End If
+        If bTargetFolderFileExist Then
+            For Each Folder in oSubFolders
+                msgbox("目标路径已存在文件夹，请删除后重试")             
+                bContinue = False
+                Exit For
+            Next
+        End If    
+    End If
+End Function
 
-'/////////////输入报错标识位/////////////////////////////////////////////////////  
+Function getProjectName()
+    '/////////////获取工程名/////////////////////////////////////////////////////
 
-If flag_lk<>1 Then
+    If bContinue Then
+        Dim oFolder, oSubFolders, sTmp
+        Set oFolder = Fso.GetFolder(sCodeOutPath & "\target\product\")
+        Set oSubFolders = oFolder.SubFolders
+        For Each Folder in oSubFolders
+            sTmp = Folder.Name
+            If Fso.FileExists(sCodeOutPath & "\target\product\" & sTmp & "\system.img") Then
+                sProjectName = sTmp
+                Exit For
+            End If
+        Next
 
-'/////////////获取工程名/////////////////////////////////////////////////////
-
-    Set MyFolder_PN = Fso.GetFolder(SL&"\out\target\product\")
-    Set Folders = MyFolder_PN.SubFolders
-    For Each Folder in Folders
-        FDN=Folder.Name
-        If Fso.FileExists(SL&"\out\target\product\"&FDN&"\system.img") Then
-            PN=Folder.Name
-            Exit For
-        End If
-    Next
-
-    If PN="" Then
-        msgbox("代码路径下不存在system.img，确认后重试")
-    Else
-
-        L1=SL&"\out\target\product\"&PN&"\"
-        L2=DL&"\"
-
-'/////////////检测modem文件路径/////////////////////////////////////////////////////  
-
-        If Fso.FolderExists(L1&"obj\CODEGEN\cgen") Then
-            MD1="obj\CODEGEN\cgen\"
-            MD2="obj\CUSTGEN\custom\modem\"
-            flag_AP = 1
-            flag_BP = 1
+        If sProjectName = "" Then
+            bContinue = False
+            msgbox("代码路径下不存在system.img，确认后重试")
         Else
-            If Fso.FolderExists(L1&"obj\CGEN") Then
-                MD1="obj\CGEN\"
-                flag_AP = 1
+            sCodeOutProjectPath = sCodeOutPath & "\target\product\" & sProjectName & "\"
+        End If
+    End If
+End Function
+
+Function checkModemPath()
+    If bContinue Then
+
+    '/////////////检测modem文件路径/////////////////////////////////////////////////////  
+
+        If Fso.FolderExists(sCodeOutProjectPath & sKK_AP) And _
+                Fso.FolderExists(sCodeOutProjectPath & sKK_BP) Then
+            sModemFolderPath_AP = sKK_AP
+            sModemFolderPath_BP = sKK_BP
+        Else
+            If Fso.FolderExists(sCodeOutProjectPath & sL1_AP) Then
+                sModemFolderPath_AP = sL1_AP
             End If
 
-            If Fso.FolderExists(L1&"obj\ETC") Then
-                Set MyFolder_BP = Fso.GetFolder(L1&"obj\ETC\")
-                Set Folders = MyFolder_BP.SubFolders
-                For Each Folder in Folders
-                    If ReturnRegMatch("BPLGU",Folder.Name)="BPLGU" Then
-                        FDN_BP=Folder.Name
-                        MD2="obj\ETC\"&FDN_BP&"\"   
-                        flag_BP = 1
+            If Fso.FolderExists(sCodeOutProjectPath & sL1_BP) Then
+                Set oFolder = Fso.GetFolder(sCodeOutProjectPath & sL1_BP)
+                Set oSubFolders = oFolder.SubFolders
+                For Each Folder in oSubFolders
+                    sTmp = Folder.Name
+                    If InStr(sTmp, "BPLGU") > 0 Then
+                        sModemFolderPath_BP = sL1_BP & sTmp & "\" 
                         Exit For
                     End If
                 Next
-            End If     
+            End If
+
         End If
 
-'/////////////获取modem文件名/////////////////////////////////////////////////////
+        If sModemFolderPath_AP = "" And _
+                sModemFolderPath_BP = "" Then
+            bContinue = False
+            MsgBox("未找到modem文件")
+        End If
 
-        If flag_AP = 1 Then
-            Set MyFolder_AP = Fso.GetFolder(L1&MD1)
-            Set Files_AP = MyFolder_AP.Files
-            For Each File in Files_AP
-                FLN=File.Name&"_ENUM"
-                If Fso.FileExists(L1&MD1&FLN) Then
-                    FLN_AP=File.Name
-                    MD1=MD1&FLN_AP    
-                    flag_AP = 2
+    End If
+End Function
+
+Function getModemFilePath()
+    If bContinue Then
+
+    '/////////////获取modem文件名/////////////////////////////////////////////////////
+
+        If sModemFolderPath_AP <> "" Then
+            Set oFolder = Fso.GetFolder(sCodeOutProjectPath & sModemFolderPath_AP)
+            Set oFiles = oFolder.Files
+            For Each File in oFiles
+                sTmp = File.Name
+                If Fso.FileExists(sCodeOutProjectPath & sModemFolderPath_AP & sTmp & "_ENUM") Then
+                    sModemFilePath_AP = sModemFolderPath_AP & sTmp    
                     Exit For
                 End If
             Next
         End If   
 
-        If flag_BP = 1 Then
-            Set MyFolder_BP = Fso.GetFolder(L1&MD2)
-            Set Files_BP = MyFolder_BP.Files
-            For Each File in Files_BP
-                If ReturnRegMatch("BPLGU",File.Name)="BPLGU" Then
-                    FLN_BP=File.Name
-                    MD2=MD2&FLN_BP
-                    flag_BP = 2
+        If sModemFolderPath_BP <> "" Then
+            Set oFolder = Fso.GetFolder(sCodeOutProjectPath & sModemFolderPath_BP)
+            Set oFiles = oFolder.Files
+            For Each File in oFiles
+                sTmp = File.Name
+                If InStr(sTmp, "BPLGU") > 0 Then
+                    sModemFilePath_BP = sModemFolderPath_BP & sTmp
                     Exit For
                 End If
             Next    
         End If
 
-'/////////////拷贝modem文件/////////////////////////////////////////////////////
+        If sModemFilePath_AP = "" And _
+                sModemFilePath_BP = "" Then
+            bContinue = False
+            MsgBox("未找到modem文件")
+        End If
 
-            If flag_AP = 2 OR flag_BP = 2 Then
-                Fso.CreateFolder(L2&"modem")
-                document.getElementById("modem_count1").innerHTML = 2
-                If flag_AP = 2 Then
-                    Fso.copyfile L1&MD1,L2&"modem"&"\",false
-                    modemCount()
-                End If
-                If flag_BP = 2 Then
-                    Fso.copyfile L1&MD2,L2&"modem"&"\",false
-                    modemCount()
-                End If
+    End If
+End Function
+
+Function copyModemFile()
+    If bContinue Then
+
+        Fso.CreateFolder(sTargetFolderPath & "modem")
+
+        If sModemFilePath_AP <> "" And _
+                sModemFilePath_BP <> "" Then
+            document.getElementById("modem_count1").innerHTML = 2
+        Else
+            document.getElementById("modem_count1").innerHTML = 1
+        End If
+
+        If sModemFilePath_AP <> "" Then
+            Fso.copyfile sCodeOutProjectPath & sModemFilePath_AP, sTargetFolderPath & "modem" & "\", false
+            modemCount()
+        End If
+
+        If sModemFilePath_BP <> "" Then
+            Fso.copyfile sCodeOutProjectPath & sModemFilePath_BP, sTargetFolderPath & "modem" & "\", false
+            modemCount()
+        End If
+
+    End If
+End Function
+
+Function copySoftware()
+    If bContinue And (NOT bNotCopySoftware) then      
+    '/////////////拷贝软件/////////////////////////////////////////////////////
+
+        Dim iSoftwareFileCount
+        Set oFolder = Fso.GetFolder(sCodeOutProjectPath)
+        Set oFiles = oFolder.Files
+
+        For Each File in oFiles
+            sTmp = File.Name
+            If (Not InStr(sTmp, ".zip") > 0) Then
+                iSoftwareFileCount = iSoftwareFileCount + 1
+            End If
+        Next    
+        document.getElementById("software_count1").innerHTML = iSoftwareFileCount          
+        
+        For Each File in oFiles
+            sTmp = File.Name
+            Select Case True
+                Case InStr(sTmp, "system.img") > 0
+                Case InStr(sTmp, "target_files-") > 0
+                    sOtaFileName_tf = sTmp
+                Case InStr(sTmp, "-ota-") > 0
+                    sOtaFileName_ota = sTmp
+                Case Else
+                    Fso.copyfile sCodeOutProjectPath & sTmp,sTargetFolderPath,false
+                    softwareCount()
+            End Select
+        Next    
+        Sleep(1)
+        Fso.copyfile sCodeOutProjectPath & "system.img",sTargetFolderPath,false
+        softwareCount()
+    End If
+End Function
+
+Function checkOtaPath()
+    If bContinue Then
+        If getCheckedRadio("otaFilePicker") <> "no_ota" Then
+        
+            Select Case getCheckedRadio("otaFilePicker")
+                Case "target_files-package"
+                    otaFilePath = sOtaFileName_tf
+                Case "-ota-"
+                    otaFilePath = sOtaFileName_ota
+                Case "obj/-target_files-"
+                    getObjOtaFilePath()
+                    If sOtaFileName_objtf <> "" Then
+                        otaFilePath = "obj\PACKAGING\target_files_intermediates\" & sOtaFileName_objtf
+                    End If
+            End Select
+
+            If otaFilePath <> "" Then
+                bCopyOta = True    
+            Else
+                bCopyOta = False
+                MsgBox("OTA文件不存在")
             End If
 
-'/////////////拷贝软件/////////////////////////////////////////////////////
-
-        If (NOT debug_flag) then        
-            Set MyFolder_Out = Fso.GetFolder(L1)
-            Set Files_Out = MyFolder_Out.Files
-
-            For Each File in Files_Out
-                If (Not ReturnRegMatch(".zip",File.Name) = ".zip") Then
-                    s_count = s_count + 1
-                End If    
-            Next    
-            document.getElementById("software_count1").innerHTML = s_count          
-            
-            For Each File in Files_Out
-                Select Case True
-                    Case ReturnRegMatch("system",File.Name) = "system"
-                    Case ReturnRegMatch("target_files-",File.Name) = "target_files-"
-                        OTA_FN1=File.Name
-                    Case ReturnRegMatch("-ota-",File.Name) = "-ota-"
-                        OTA_FN2=File.Name
-                    Case Else 
-                        Fso.copyfile L1&File.Name,L2,false
-                        softwareCount()
-                End Select
-            Next    
-            Sleep(1)
-            Fso.copyfile L1&"system.img",L2,false
-            softwareCount()
-
-'/////////////拷贝OTA文件/////////////////////////////////////////////////////
-
-            If getCheckedRadio("otaFilePicker") <> "no_ota" Then
-                If Fso.FolderExists(L1&"obj\PACKAGING\target_files_intermediates") Then
-                    Set MyFolder_OTA = Fso.GetFolder(L1&"obj\PACKAGING\target_files_intermediates")
-                    Set Files_OTA = MyFolder_OTA.Files          
-                    For Each File in Files_OTA
-                        If ReturnRegMatch("-target_files-",File.Name) = "-target_files-" Then
-                            OTA_FN3=File.Name
-                            Exit For
-                        End If
-                    Next
-                End If
-
-                Select Case getCheckedRadio("otaFilePicker")
-                    Case "target_files-package"
-                        otaFilePath = OTA_FN1
-                    Case "-ota-"
-                        otaFilePath = OTA_FN2
-                    Case "-target_files-"
-                        otaFilePath = "obj\PACKAGING\target_files_intermediates\"&OTA_FN3
-                End Select
-
-                If otaFilePath <> "" Then
-                    otaFilePath = L1&otaFilePath
-
-                    Fso.CreateFolder(L2&"OTA")
-                    document.getElementById("ota_count1").innerHTML = 1
-                    Sleep(1)
-                    Fso.copyfile otaFilePath, L2&"OTA"&"\", false
-                    otaCount()
-                Else
-                    msgbox("OTA文件不存在")       
-                End If
-            End If      
-
-            If flag_modem=1 Then
-                msgbox("拷贝成功！不存在modem文件！")
-            Else    
-                msgbox("拷贝成功！")
-            End If  
         End If
-'//////////////////////////////////////////////////////////////////
+
+    Else
+        bCopyOta = False
     End If
-End If
-End Sub
+End Function
+
+Function copyOtaFile()
+    If bContinue And bCopyOta Then
+    '/////////////拷贝OTA文件/////////////////////////////////////////////////////
+
+        otaFilePath = sCodeOutProjectPath & otaFilePath
+
+        Fso.CreateFolder(sTargetFolderPath & "OTA")
+        document.getElementById("ota_count1").innerHTML = 1
+        Sleep(1)
+        Fso.copyfile otaFilePath, sTargetFolderPath & "OTA" & "\", false
+        otaCount()    
+
+    End If
+End Function
+
+Function getObjOtaFilePath()
+    If Fso.FolderExists(sCodeOutProjectPath & "obj\PACKAGING\target_files_intermediates") Then
+        Set oFolder = Fso.GetFolder(sCodeOutProjectPath & "obj\PACKAGING\target_files_intermediates")
+        Set oFile = oFolder.Files          
+        For Each File in oFile
+            sTmp = File.Name
+            If InStr(sTmp, "obj/-target_files-") > 0 Then
+                sOtaFileName_objtf = sTmp
+                Exit For
+            End If
+        Next
+    End If
+End Function
+
+
+
+
+Function runCopy()
+    initBoolean() : cleanCount() : getInputValue() : checkInputInfo() : getProjectName() : checkModemPath() : getModemFilePath()
+
+    copyModemFile() : copySoftware() : checkOtaPath() : copyOtaFile()
+
+    If bContinue Then
+        MsgBox("Copy done!")
+    End If
+
+End Function
 
 </Script>
 
