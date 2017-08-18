@@ -98,6 +98,13 @@
         1. 代码路径和目标路径，改为点击输入框即显示列表，光标移开即隐藏列表
         解决BUG：
         1. 更改BP文件源路径为\system\etc\mddb，防止文件路径超出256字符限制
+///////////////////////////////////////  
+    版本2.6
+        1. 模块化分离文件
+        2. 代码流程逻辑重写
+        3. 按钮样式修改
+        4. 输入信息不全时以及拷贝时冻结相关按钮
+        5. 支持拷贝verified文件
 -->
 <Html>
 <Head>
@@ -105,7 +112,7 @@
 <Title>Copy</Title>
 </Head>
 
-<Body bgcolor="White">
+<Body bgcolor="white">
 
 <style type="text/css">
 
@@ -127,32 +134,17 @@ body {
     font-size:13px;
 }
 
-.Menu { 
-    position:relative; 
-    width:320px; 
-    height:127px; 
-    z-index:1; 
-    background: #FFF; 
-    border:1px solid #000; 
-    margin-top:0px; 
-    display:none; 
-}
+.Menu { position:relative; width:320px; height:127px; z-index:1; margin-top:0px; display:none; }
 
-.Menu2 { 
-    position: absolute; 
-    left:0; 
-    top:0; 
-    width:100%; 
-    height:auto; 
-    overflow:hidden; 
-    z-index:1; 
-} 
+.Menu_codePath { position:relative; width:335px; height:50px; z-index:1; margin-top:0px; display:none; }
+
+.Menu2 { position: absolute; left:0; top:0; width:100%; height:auto; overflow:hidden; z-index:1; } 
 .Menu2 ul{margin:0;padding:0} 
 .Menu2 ul li{width:100%;height:25px;line-height:25px;text-indent:5px; 
              border-bottom:1px solid #ccc;cursor:pointer; 
              change:expression( 
               this.onmouseover=function(){ 
-                this.style.background="#F2F5EF"; 
+                this.style.background="#C4E1FF"; 
               }, 
               this.onmouseout=function(){ 
                 this.style.background=""; 
@@ -160,8 +152,16 @@ body {
              ) 
             } 
 .form{width:300px;height:auto;} 
-.form div{position:relative;top:0;left:0;margin-bottom:5px} 
+.form div{position:relative;top:0;left:0;margin-bottom:5px}
+
+.form_codePath { width:335px; height:auto; }
+.form_codePath div{ position:relative; top:0; left:0; margin-bottom:5px; }
+
 #List1#List2#List3{left:0px;top:93px;} 
+
+.select{border:1px solid #aaa;}
+.input_text{border:1px solid #aaa;}
+.input_button{border:1px solid #aaa; background:none;}
 -->
 </style>
 
@@ -178,7 +178,7 @@ body {
             &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
             &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
             &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-            <b id="copy_status" style="color:black">未开始</b>
+            <b id="copy_status" style="color:black">空闲</b>
         </div>
     </div>
 </fieldset>
@@ -186,69 +186,109 @@ body {
 <br>
 <fieldset>
 <legend><b>代码的out路径</b></legend>
-    <div class="form" onmouseleave="showAndHide('list_code_path','hide')">
-        <input id="input_code_path" type="text" 
-                onclick="showAndHide('list_code_path','show')" 
-                onchange="getOutPath()" 
-                size="50"/>
-        <div class="Menu" id="list_code_path"> 
+    <div class="form_codePath">
+        <input type="text" id="input_code_path" 
+                onclick="showAndHide('list_code_path_select_ver','show')" 
+                onchange="onChangeCodePath(0)" 
+                size="50" />
+        <div class="Menu_codePath" id="list_code_path_select_ver" onmouseleave="showAndHide('list_code_path_select_ver','hide')"> 
             <div class="Menu2"> 
-                <ul id="ul_code_path"> 
+                <ul id="ul_code_path_select_ver"> 
                 </ul> 
             </div> 
-        </div> 
+        </div>
+        <div class="Menu_codePath" id="list_code_path_n0" onmouseleave="showAndHide('list_code_path_n0','hide')"> 
+            <div class="Menu2"> 
+                <ul id="ul_code_path_n0"> 
+                </ul> 
+            </div> 
+        </div>
+        <div class="Menu_codePath" id="list_code_path_m0" onmouseleave="showAndHide('list_code_path_m0','hide')"> 
+            <div class="Menu2"> 
+                <ul id="ul_code_path_m0"> 
+                </ul> 
+            </div> 
+        </div>
+        <div class="Menu_codePath" id="list_code_path_l1" onmouseleave="showAndHide('list_code_path_l1','hide')"> 
+            <div class="Menu2"> 
+                <ul id="ul_code_path_l1"> 
+                </ul> 
+            </div> 
+        </div>
+        <div class="Menu_codePath" id="list_code_path_kk" onmouseleave="showAndHide('list_code_path_kk','hide')"> 
+            <div class="Menu2"> 
+                <ul id="ul_code_path_kk"> 
+                </ul> 
+            </div> 
+        </div>
     </div>
-    <input type="button" onclick="getBrowseValue('input_code_path')" value="浏览" />
-    <input type="button" onclick="openTargetFolder('input_code_path')" value="打开当前路径文件夹" />
-    <!-- <select id="select_code_path" onchange="getOutPath(0)"></select>
-    <div id="shoudongshuru">手动输入（out所在的路径，例如Z:\8312C\alps\out）</div>
-    <input id="input_code_path" type="text" onchange="getOutPath(1)" size="50"/> -->
+    <input class="input_button" id="open_code_path" type="button" onclick="openFolderByInput('input_code_path')" value="打开当前路径文件夹" />
 </fieldset>
 
 <br>
 <fieldset>
     <legend><b>目标文件夹路径（如F:\test）：</b></legend>
     <div class="form" onmouseleave="showAndHide('list_target_history','hide')">
-        <input id="target_folder_path" type="text" 
+        <input class="input_text" id="input_target_path" type="text" 
                 onclick="showAndHide('list_target_history','show')" 
-                onchange="getTargetPath(0)" 
+                onchange="onChangeTargetPath(0)" 
                 size="50"/>
-        <div class="Menu" id="list_target_history"> 
+        <div class="Menu" id="list_target_history" onmouseleave="showAndHide('list_target_history','hide')"> 
             <div class="Menu2"> 
                 <ul id="ul_target_history"> 
                 </ul> 
             </div> 
         </div> 
     </div>
-    <input type="button" onclick="getBrowseValue('target_folder_path')" value="浏览" />
-    <input type="button" onclick="openTargetFolder('target_folder_path')" value="打开当前路径文件夹" />
+    <input class="input_button" id="open_target_path" type="button" onclick="openFolderByInput('input_target_path')" value="打开当前路径文件夹" />
 </fieldset>
 
 <br>
 <fieldset>
     <legend><b>新文件夹名</b></legend>
-    <input id="new_folder_name" type="text" onchange="getNewFolderName(0)" size=50 />
+    <input class="input_text" id="input_folder_name" type="text" onchange="onChangeFolderName(0)" size=50 />
     <div id="getVerName">从build.prop中获取版本号</div>
-    <input id="getVersion1" type="button" onclick="getCustomBuildVersion('ro.build.display.id')" value="display.id" />
-    <input id="getVersion2" type="button" onclick="getCustomBuildVersion('ro.custom.build.version')" value="build.version" />
+    <input class="input_button" id="get_display_id" disabled type="button" onclick="getCustomBuildVersion('ro.build.display.id')" value="display.id" />
+    <input class="input_button" id="get_build_version" disabled type="button" onclick="getCustomBuildVersion('ro.custom.build.version')" value="build.version" />
 </fieldset>
 
 <br>
+<!-- <fieldset>
+    <legend><b>选择OTA文件：</b></legend>
+    <input type="file" id="ota_file_path" size=40 onchange="getOtaFile()" onclick="setDefaultPath()" />
+</fieldset> -->
 <fieldset>
     <legend><b>选择OTA文件：</b></legend>
-    <select id="select_ota_file" onchange="getOtaFiles()">
+    <select class="select" id="select_ota_file" disabled onchange="onSelectOtaFile()">
         <option>如果编了OTA，请点击下面的按钮</option>
     </select>
     <br>
-    <input type="button" onclick="checkOtaFiles()" value="检查OTA文件" />
+    <input class="input_button" id="check_ota_files" disabled type="button" onclick="onClickCheckOtaFiles()" value="检查OTA文件" />
 </fieldset>
 
 <br>
-<input type="button" onclick="runCopy()" value="Copy!">
+<input type="checkbox" id="copy_verified" />
+拷贝verified文件
+<br>
+<br>
+<input class="input_button" id="start_copy" disabled type="button" onclick="onClickCopy()" value="Copy!">
 
-<Script Language="JavaScript" src="toolFun.js"></Script>
-<Script Language="JavaScript" src="copy.js"></Script>
-<Script Language = "VBScript" src="copy.vbs"></Script>
+
+
+<Script Language="JavaScript" src="Util\CoreJsFuns.js"></Script>
+<Script Language="JavaScript" src="Util\UtilFuns.js"></Script>
+<Script Language="JavaScript" src="GetOtaFile.js"></Script>
+<Script Language = "VBScript" src="Util\UtilFuns.vbs"></Script>
+<Script Language = "VBScript" src="Util\UtilClasses.vbs"></Script>
+<Script Language = "VBScript" src="ReadCodePath.vbs"></Script>
+<Script Language = "VBScript" src="GetCodePath.vbs"></Script>
+<Script Language = "VBScript" src="GetTargetPath.vbs"></Script>
+<Script Language = "VBScript" src="ReadAndSaveTargetPath.vbs"></Script>
+<Script Language = "VBScript" src="GetNewFolderName.vbs"></Script>
+<Script Language = "VBScript" src="GetOtaFile.vbs"></Script>
+<Script Language = "VBScript" src="GetSoftwareFiles.vbs"></Script>
+<Script Language = "VBScript" src="GetDbFiles.vbs"></Script>
+<Script Language = "VBScript" src="StartCopy.vbs"></Script>
 
 </Body>
 </Html>
