@@ -85,6 +85,14 @@
         解决BUG：
         1. 解决检测不到除"target_files-package.zip"外的OTA文件的BUG
         2. 解决拷贝obj下面的OTA文件出错的问题
+    版本2.5.1
+        功能：
+        1. 代码路径的选择列表，改为点击按钮才显示
+        2. 代码路径增加浏览和打开文件夹的按钮
+        3. 光标移出列表范围即隐藏列表
+        4. 代码整理
+        解决BUG：
+        1. 支持拷贝多个BP文件
 -->
 <Html>
 <Head>
@@ -113,8 +121,19 @@ body {
 #ota {
     font-size:13px;
 }
- 
-.Menu { 
+
+.Menu_code { 
+    position:relative; 
+    width:320px; 
+    height:127px; 
+    z-index:1; 
+    background: #FFF; 
+    border:1px solid #000; 
+    margin-top:0px; 
+    display:none; 
+}
+
+.Menu_target { 
     position:relative; 
     width:320px; 
     height:127px; 
@@ -172,36 +191,48 @@ body {
 
 <br>
 <fieldset>
-<legend><b>代码路径</b></legend>
-    <select id="select_code_path" onchange="getOutPath(0)"></select>
+<legend><b>代码的out路径</b></legend>
+    <div class="form">
+        <input id="input_code_path" type="text" onchange="getOutPath()" size="50"/>
+        <div class="Menu_code" id="list_code_path" onmouseleave="showAndHide('list_code_path','hide')"> 
+            <div class="Menu2"> 
+                <ul id="ul_code_path"> 
+                </ul> 
+            </div> 
+        </div> 
+    </div>
+    <input type="button" onclick="getBrowseValue('input_code_path')" value="浏览" />
+    <input type="button" onchange="getOutPath()" onclick="showAndHide('list_code_path','show')" value="本地代码路径" />
+    <input type="button" onclick="openTargetFolder('input_code_path')" value="打开当前路径文件夹" />
+    <!-- <select id="select_code_path" onchange="getOutPath(0)"></select>
     <div id="shoudongshuru">手动输入（out所在的路径，例如Z:\8312C\alps\out）</div>
-    <input id="input_code_path" type="text" onchange="getOutPath(1)" size="50"/>
+    <input id="input_code_path" type="text" onchange="getOutPath(1)" size="50"/> -->
 </fieldset>
 
 <br>
 <fieldset>
     <legend><b>目标文件夹路径（如F:\test）：</b></legend>
     <div class="form">
-        <input id="target_folder_path" type="text" onchange="getTargetPath()" size="50"/>
-        <div class="Menu" id="List"> 
+        <input id="target_folder_path" type="text" onchange="getTargetPath(0)" size="50"/>
+        <div class="Menu_target" id="list_target_history" onmouseleave="showAndHide('list_target_history','hide')"> 
             <div class="Menu2"> 
-                <ul id="input_history"> 
+                <ul id="ul_target_history"> 
                 </ul> 
             </div> 
         </div> 
     </div>
-    <input type="button" onclick="getBrowseValue()" value="浏览" />
-    <input type="button" onclick="showAndHide('List','show')" value="历史记录" />
-    <input type="button" onclick="openTargetFolder()" value="打开当前路径文件夹" />
+    <input type="button" onclick="getBrowseValue('target_folder_path')" value="浏览" />
+    <input type="button" onclick="showAndHide('list_target_history','show')" value="历史记录" />
+    <input type="button" onclick="openTargetFolder('target_folder_path')" value="打开当前路径文件夹" />
 </fieldset>
 
 <br>
 <fieldset>
     <legend><b>新文件夹名</b></legend>
-    <input id="new_folder_name" type="text" onchange="getNewFolderName()" size=50 />
-    <div id="getVerName">获取版本号作为文件夹名</div>
-    <input id="getVersion1" type="button" onclick="getCustomBuildVersion('display.id')" value="display.id" />
-    <input id="getVersion2" type="button" onclick="getCustomBuildVersion('build.version')" value="build.version" />
+    <input id="new_folder_name" type="text" onchange="getNewFolderName(0)" size=50 />
+    <div id="getVerName">从build.prop中获取版本号</div>
+    <input id="getVersion1" type="button" onclick="getCustomBuildVersion('ro.build.display.id')" value="display.id" />
+    <input id="getVersion2" type="button" onclick="getCustomBuildVersion('ro.custom.build.version')" value="build.version" />
 </fieldset>
 
 <br>

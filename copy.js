@@ -67,6 +67,12 @@ function jsAddOption(SelectId, OptionName)
     parentNode_appendChild(SelectId, option);
 }
 
+function jsAddOptionValueAndName(SelectId, OptionValue, OptionName) 
+{
+    var option = option_creat(OptionValue, OptionName);
+    parentNode_appendChild(SelectId, option);
+}
+
 function jsRemoveAllOption(SelectId)
 {
     var select = document.getElementById(SelectId)
@@ -78,9 +84,9 @@ function jsRemoveAllOption(SelectId)
     }
 }
 
-function showAndHide(obj, types)
+function showAndHide(listId, types)
 { 
-    var Layer=window.document.getElementById(obj); 
+    var Layer=window.document.getElementById(listId); 
     switch(types){ 
         case "show": 
             Layer.style.display="block"; 
@@ -90,11 +96,11 @@ function showAndHide(obj, types)
     } 
 }
 
-function addBeforeLi(str, ulId)
+function addBeforeLi(str, inputId, listId, ulId)
 {
     var obj = document.getElementById(ulId);
     var li = document.createElement("li");
-    li.onmousedown = function(){setValueOfTargetFolder(str)};
+    li.onmousedown = function(){setValueOfTargetFolder(inputId, listId, str)};
     li.innerHTML = str;
     li.style.fontSize = "x-small";
     
@@ -104,6 +110,17 @@ function addBeforeLi(str, ulId)
     } else {
         obj.appendChild(li);
     }
+}
+
+function addAfterLi(str, inputId, listId, ulId)
+{
+    var obj = document.getElementById(ulId);
+    var li = document.createElement("li");
+    li.onmousedown = function(){setValueOfTargetFolder(inputId, listId, str)};
+    li.innerHTML = str;
+    li.style.fontSize = "x-small";
+    
+    obj.appendChild(li);
 }
 
 function removeLi(ulId, seq) {

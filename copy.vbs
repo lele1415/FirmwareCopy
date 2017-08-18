@@ -19,12 +19,17 @@ Dim bDebug : bDebug = False
 
 Const FOR_READING = 1
 Const FOR_APPENDING = 8
-Const FROM_SELECT = 0
-Const FROM_INPUT = 1
-Const ID_SELECT_CODE_PATH = "select_code_path"
+Const FROM_INPUT = 0
+Const FROM_CHECK = 1
+Const PROCESS_WAIT = 0
+Const PROCESS_COPY = 1
+'Const ID_SELECT_CODE_PATH = "select_code_path"
 Const ID_INPUT_CODE_PATH = "input_code_path"
+Const ID_LIST_CODE_PATH = "list_code_path"
+Const ID_UL_CODE_PATH = "ul_code_path"
 Const ID_INPUT_TARGET_FOLDER_PATH = "target_folder_path"
-Const ID_UL_INPUT_HISTORY = "input_history"
+Const ID_LIST_TARGET_HISTORY = "list_target_history"
+Const ID_UL_TARGET_HISTORY = "ul_target_history"
 Const ID_RADIO_CREATE_NEW_FOLDER = "radio_create_new_folder"
 Const ID_INPUT_NEW_FOLDER_NAME = "new_folder_name"
 Const ID_SELECT_OTA_FILE = "select_ota_file"
@@ -36,133 +41,25 @@ Const ID_DIV_SOFTWARE_WAIT = "software_wait"
 Const ID_DIV_OTA_WAIT = "ota_wait"
 Const ID_DIV_COPY_STATUS = "copy_status"
 
-Const INVALID_STR_OF_FOlDER_NAME = "/\:*?""<>|"
+Const INVALID_CHAR_OF_FOlDER_NAME = "/\:*?""<>|"
 
-Dim pOutFolder, pOutProjectFolder, pTargetFolder, sNewFolderName, pFile_AP, pOtaFile
-pOutFolder = ""
-pOutProjectFolder = ""
-pTargetFolder = ""
-sNewFolderName = ""
-pOtaFile = ""
+Dim pFile_AP
+
+Dim stOutFolder : Set stOutFolder = New StatusHolder
+Dim stOutProjectFolder : Set stOutProjectFolder = New StatusHolder
+Dim stTargetFolder : Set stTargetFolder = New StatusHolder
+Dim stNewFolderName : Set stNewFolderName = New StatusHolder
+Dim stOtaFilePath : Set stOtaFilePath = New StatusHolder
+
+Dim statusProcess : statusProcess = PROCESS_WAIT
+
 Dim vaFolderPath_BP : Set vaFolderPath_BP = New VariableArray
 Dim vaFilePath_BP : Set vaFilePath_BP = New VariableArray
 Dim vaFileNamesForCopy : Set vaFileNamesForCopy = New VariableArray
 Dim vaHistoryTargetFolder : Set vaHistoryTargetFolder = New VariableArray
 
-Call ReadCodePath()
-Call getOutPath(FROM_SELECT)
-Call readHistory(pInputHistory, ID_UL_INPUT_HISTORY)
-
-Sub ReadCodePath()
-    If Not oFso.FileExists(pAllCodePath) Then
-        MsgBox("代码路径文件不存在！")
-        Exit Sub
-    End If
-
-    Dim oTxt : Set oTxt = oFso.OpenTextFile(pAllCodePath, FOR_READING)
-
-    Dim sTmp
-    Do Until oTxt.AtEndOfStream
-        sTmp = oTxt.ReadLine
-        If Trim(sTmp) <> "" Then Call jsAddOption(ID_SELECT_CODE_PATH, sTmp)
-    Loop
-    oTxt.Close
-    Set oTxt = Nothing
-End Sub
-
-Sub readHistory(DictPath, ulId)
-    If Not OFso.FileExists(DictPath) Then
-        Exit Sub
-    End If    
-    
-    Dim oDict : Set oDict = oFso.OpenTextFile(DictPath, FOR_READING)
-
-    Do Until oDict.AtEndOfStream
-        Dim sTmp : sTmp = oDict.ReadLine
-        If sTmp <> "" Then
-            Call addBeforeLi(sTmp, ulId)
-            vaHistoryTargetFolder.Append(sTmp)
-        End If
-    Loop
-
-    Set oDict = Nothing
-End Sub
-
-Sub writeHistory(DictPath, ulId, str)
-    Dim seqInArray : seqInArray = vaHistoryTargetFolder.IsExistInArray(str)
-    If seqInArray > -1 Then
-        Call removeLi(ulId, vaHistoryTargetFolder.Length - seqInArray)
-        Call addBeforeLi(str, ulId)
-
-        vaHistoryTargetFolder.MoveToEnd(seqInArray)
-
-        Call writeNewHistoryTxt(DictPath)
-        Exit Sub
-    End If
-
-
-    If vaHistoryTargetFolder.Length < 7 Then
-        Call addBeforeLi(str, ulId)
-
-        vaHistoryTargetFolder.Append(str)
-
-        Call appendStrToHistoryTxt(DictPath, str)
-    Else
-        Call removeLi(ulId, 0)
-        Call addBeforeLi(str, ulId)
-
-        vaHistoryTargetFolder.PopBySeq(0)
-        vaHistoryTargetFolder.Append(str)
-
-        Call writeNewHistoryTxt(DictPath)
-    End If
-End Sub
-
-Sub appendStrToHistoryTxt(DictPath, str)
-    Dim oDict
-    If Not OFso.FileExists(DictPath) Then
-        Call oFso.CreateTextFile(DictPath, True)
-    End If
-    
-    Set oDict = oFso.OpenTextFile(DictPath, FOR_APPENDING)
-    oDict.WriteLine(str)
-    oDict.Close
-    Set oDict = Nothing
-End Sub
-
-Sub writeNewHistoryTxt(DictPath)
-    Call initTxtFile(DictPath)
-    Dim oDict
-    Set oDict = oFso.OpenTextFile(DictPath, FOR_APPENDING)
-    Dim i
-    For i = 0 To vaHistoryTargetFolder.Length
-        oDict.WriteLine(vaHistoryTargetFolder.Value(i))
-    Next
-    oDict.Close
-    Set oDict = Nothing
-End Sub
-
-Sub initTxtFile(FilePath)
-    If oFso.FileExists(FilePath) Then
-        Dim TxtFile
-        Set TxtFile = oFso.getFile(FilePath)
-        TxtFile.Delete
-        Set TxtFile = Nothing
-    End If
-    oFso.CreateTextFile FilePath, True
-End Sub
-
-Sub setValueOfTargetFolder(value)
-    Call showAndHide("List","hide")
-    Call setElementValue(ID_INPUT_TARGET_FOLDER_PATH, value)
-    Call getTargetPath()
-End Sub
-
-Sub openTargetFolder()
-    Dim sTmp : sTmp = getElementValue(ID_INPUT_TARGET_FOLDER_PATH)
-    If sTmp = "" Then Exit Sub
-    If oFso.FolderExists(sTmp) Then oWs.run "explorer.exe " & sTmp
-End Sub
+Call readCodePath(pAllCodePath, ID_INPUT_CODE_PATH, ID_LIST_CODE_PATH, ID_UL_CODE_PATH)
+Call readHistory(pInputHistory, ID_INPUT_TARGET_FOLDER_PATH, ID_LIST_TARGET_HISTORY, ID_UL_TARGET_HISTORY)
 
 Class VariableArray
     Private mLength, mArray()
@@ -381,6 +278,77 @@ Class VariableArray
     End Function
 End Class
 
+
+Const STATUS_INVALID = 0
+Const STATUS_VALID = 1
+Const STATUS_WAIT = 2
+
+Class StatusHolder
+    Private mValue, mStatus, mInvalidMsg
+
+    Private Sub Class_Initialize
+        mValue = ""
+        mStatus = STATUS_WAIT
+    End Sub
+
+    Public Property Get Value
+        Value = mValue
+    End Property
+
+    Public Property Get Status
+        Status = mStatus
+    End Property
+
+    Public Property Let Status(value)
+        mStatus = value
+    End Property
+
+    Public Property Get InvalidMsg
+        InvalidMsg = mInvalidMsg
+    End Property
+
+    Public Property Let InvalidMsg(value)
+        mInvalidMsg = value
+    End Property
+
+    Public Sub Reset()
+        mValue = ""
+        mStatus = STATUS_WAIT
+    End Sub
+
+    Public Sub SetValue(status, value)
+        mStatus = status
+        mValue = value
+    End Sub
+
+    Public Sub SetStatusAndMsg(status, msg, showMsg)
+        mStatus = status
+        mInvalidMsg = msg
+        If showMsg Then MsgBox(mInvalidMsg)
+    End Sub
+
+    Public Function checkInvalidAndShowMsg()
+        If mStatus = STATUS_INVALID Then
+            MsgBox(mInvalidMsg)
+            checkInvalidAndShowMsg = True
+            Exit Function
+        End If
+        checkInvalidAndShowMsg = False
+    End Function
+
+    Public Function checkStatusAndDoSomething(waitFun, invalidFun)
+        If mStatus = STATUS_WAIT Then
+            Call Execute(waitFun)
+            If mStatus = STATUS_INVALID Then
+                Call Execute(invalidFun)
+                checkStatusAndDoSomething = True
+            End If
+        ElseIf checkInvalidAndShowMsg() Then
+            checkStatusAndDoSomething = True
+        End If
+    End Function
+End Class
+
 Const SEARCH_FILE = 0
 Const SEARCH_FOLDER = 1
 Const SEARCH_ROOT = 0
@@ -388,84 +356,70 @@ Const SEARCH_SUB = 1
 Const SEARCH_WHOLE_NAME = 0
 Const SEARCH_PART_NAME = 1
 
-Function searchFolder(pRootFolder, str, searchType, searchWhere, searchMode)
+Function searchFolder(pRootFolder, str, searchType, searchWhere, searchMode, findAll)
     If Not oFso.FolderExists(pRootFolder) Then searchFolder = "" : Exit Function
+    If searchMode = SEARCH_WHOLE_NAME Then findAll = False
 
     Dim oRootFolder : Set oRootFolder = oFso.GetFolder(pRootFolder)
 
-    If searchType = SEARCH_FILE And searchWhere = SEARCH_ROOT Then
-        '//SEARCH_FILE and SEARCH_ROOT
-        If searchMode = SEARCH_WHOLE_NAME Then
-            searchFolder = startSearch(oRootFolder.Files, pRootFolder, str, searchMode)
-            Exit Function
-        ElseIf searchMode = SEARCH_PART_NAME Then
-            searchFolder = startSearch(oRootFolder.Files, pRootFolder, str, searchMode)
-            Exit Function
-        End If
-    Else
-        Dim oSubFolders : Set oSubFolders = oRootFolder.SubFolders
-
-        If searchType = SEARCH_FOLDER And searchWhere = SEARCH_ROOT Then
-            If searchMode = SEARCH_WHOLE_NAME Then
-                searchFolder = startSearch(oSubFolders, pRootFolder, str, searchMode)
-                Exit Function
-            ElseIf searchMode = SEARCH_PART_NAME Then
-                searchFolder = startSearch(oSubFolders, pRootFolder, str, searchMode)
-                Exit Function
+    Dim Folder, sTmp
+    Select Case True
+        Case searchType = SEARCH_FILE And searchWhere = SEARCH_ROOT
+            If findAll Then
+                Set searchFolder = startSearch(oRootFolder.Files, pRootFolder, str, searchMode, True)
+            Else
+                searchFolder = startSearch(oRootFolder.Files, pRootFolder, str, searchMode, False)
             End If
-        End If
 
-        '//searchWhere = SEARCH_SUB
-        Dim Folder, sTmp
-        If searchType = SEARCH_FILE Then
-            If searchMode = SEARCH_WHOLE_NAME Then
-                For Each Folder In oSubFolders
-                    sTmp = startSearch(Folder.Files, pRootFolder & "\" & Folder.Name, str, searchMode)
-                    If sTmp <> "" Then
-                        searchFolder = sTmp
-                        Exit Function
-                    End If
-                Next
-            ElseIf searchMode = SEARCH_PART_NAME Then
-                For Each Folder In oSubFolders
-                    sTmp = startSearch(Folder.Files, pRootFolder & "\" & Folder.Name, str, searchMode)
-                    If sTmp <> "" Then
-                        searchFolder = sTmp
-                        Exit Function
-                    End If
-                Next
+        Case searchType = SEARCH_FOLDER And searchWhere = SEARCH_ROOT
+            If findAll Then
+                Set searchFolder = startSearch(oRootFolder.SubFolders, pRootFolder, str, searchMode, True)
+            Else
+                searchFolder = startSearch(oRootFolder.SubFolders, pRootFolder, str, searchMode, False)
             End If
-        ElseIf searchType = SEARCH_FOLDER Then
-            If searchMode = SEARCH_WHOLE_NAME Then
-                For Each Folder In oSubFolders
-                    sTmp = startSearch(Folder.SubFolders, pRootFolder & "\" & Folder.Name, str, searchMode)
-                    If sTmp <> "" Then
-                        searchFolder = sTmp
-                        Exit Function
-                    End If
-                Next
-            ElseIf searchMode = SEARCH_PART_NAME Then
-                For Each Folder In oSubFolders
-                    sTmp = startSearch(Folder.SubFolders, pRootFolder & "\" & Folder.Name, str, searchMode)
-                    If sTmp <> "" Then
-                        searchFolder = sTmp
-                        Exit Function
-                    End If
-                Next
-            End If
-        End If
-    End If
-    searchFolder = ""
-End Function
 
-        Function startSearch(oAll, pRootFolder, str, searchMode)
-            Dim oSingle
-            For Each oSingle In oAll
-                If checkSearchName(oSingle.Name, str, searchMode) Then
-                    startSearch = pRootFolder & "\" & oSingle.Name
+        Case searchType = SEARCH_FILE And searchWhere = SEARCH_SUB
+            For Each Folder In oRootFolder.SubFolders
+                sTmp = startSearch(Folder.Files, pRootFolder & "\" & Folder.Name, str, searchMode, False)
+                If sTmp <> "" Then
+                    searchFolder = sTmp
                     Exit Function
                 End If
             Next
+            searchFolder = ""
+
+        Case searchType = SEARCH_FILE And searchWhere = SEARCH_SUB
+            For Each Folder In oRootFolder.SubFolders
+                sTmp = startSearch(Folder.SubFolders, pRootFolder & "\" & Folder.Name, str, searchMode, False)
+                If sTmp <> "" Then
+                    searchFolder = sTmp
+                    Exit Function
+                End If
+            Next
+            searchFolder = ""
+    End Select
+End Function
+
+        Function startSearch(oAll, pRootFolder, str, searchMode, findAll)
+            Dim oSingle
+
+            If findAll Then
+                Dim vaStr : Set vaStr = New VariableArray
+                For Each oSingle In oAll
+                    If checkSearchName(oSingle.Name, str, searchMode) Then
+                        vaStr.Append(pRootFolder & "\" & oSingle.Name)
+                    End If
+                Next
+                Set startSearch = vaStr
+                Exit Function
+            Else
+                For Each oSingle In oAll
+                    If checkSearchName(oSingle.Name, str, searchMode) Then
+                        startSearch = pRootFolder & "\" & oSingle.Name
+                        Exit Function
+                End If
+                Next
+            End If
             startSearch = ""
         End Function
 
@@ -484,6 +438,114 @@ End Function
                 End If
             End If
         End Function
+
+Sub readCodePath(DictPath, inputId, listId, ulId)
+    Call readTextAndDoSomething(DictPath, _
+            "If Len(Trim(sReadLine)) > 0 Then" &_
+            " Call addAfterLi(sReadLine, """&inputId&""", """&listId&""", """&ulId&""")")
+End Sub
+
+Sub readHistory(DictPath, inputId, listId, ulId)
+    Call readTextAndDoSomething(DictPath, _
+            "If Len(Trim(sReadLine)) > 0 Then" &_
+            " Call addBeforeLi(sReadLine, """&inputId&""", """&listId&""", """&ulId&""")" &_
+            " : vaHistoryTargetFolder.Append(sReadLine)")
+End Sub
+
+Sub writeHistory(DictPath, inputId, listId, ulId, str)
+    Dim seqInArray : seqInArray = vaHistoryTargetFolder.IsExistInArray(str)
+    If seqInArray > -1 Then
+        Call removeLi(ulId, vaHistoryTargetFolder.Length - seqInArray)
+        Call addBeforeLi(str, inputId, listId, ulId)
+
+        vaHistoryTargetFolder.MoveToEnd(seqInArray)
+
+        Call writeNewHistoryTxt(DictPath)
+        Exit Sub
+    End If
+
+
+    If vaHistoryTargetFolder.Length < 7 Then
+        Call addBeforeLi(str, inputId, listId, ulId)
+
+        vaHistoryTargetFolder.Append(str)
+
+        Call appendStrToHistoryTxt(DictPath, str)
+    Else
+        Call removeLi(ulId, 0)
+        Call addBeforeLi(str, inputId, listId, ulId)
+
+        vaHistoryTargetFolder.PopBySeq(0)
+        vaHistoryTargetFolder.Append(str)
+
+        Call writeNewHistoryTxt(DictPath)
+    End If
+End Sub
+
+Sub appendStrToHistoryTxt(DictPath, str)
+    Call initTxtFile(DictPath)
+    Call writeTextAndDoSomething(DictPath, _
+            "oText.WriteLine("""&str&""")")
+End Sub
+
+Sub writeNewHistoryTxt(DictPath)
+    Call initTxtFile(DictPath)
+    Call writeTextAndDoSomething(DictPath, _
+            "Dim i : For i = 0 To vaHistoryTargetFolder.Length" &_
+            " : oText.WriteLine(vaHistoryTargetFolder.Value(i))" &_
+            " : Next")
+End Sub
+
+Sub initTxtFile(FilePath)
+    If oFso.FileExists(FilePath) Then
+        Dim TxtFile
+        Set TxtFile = oFso.getFile(FilePath)
+        TxtFile.Delete
+        Set TxtFile = Nothing
+    End If
+    oFso.CreateTextFile FilePath, True
+End Sub
+
+Sub setValueOfTargetFolder(inputId, listId, value)
+    Call showAndHide(listId, "hide")
+    Call setElementValue(inputId, value)
+
+    Call doAfterSetInputValue(inputId)
+End Sub
+
+Sub openTargetFolder(inputId)
+    Dim sTmp : sTmp = getElementValue(inputId)
+    If sTmp = "" Then Exit Sub
+    If oFso.FolderExists(sTmp) Then oWs.run "explorer.exe " & sTmp
+End Sub
+
+Sub readTextAndDoSomething(path, strFun)
+    If Not oFso.FileExists(path) Then Exit Sub
+    
+    Dim oText, sReadLine, exitFlag
+    Set oText = oFso.OpenTextFile(path, FOR_READING)
+    exitFlag = False
+
+    Do Until oText.AtEndOfStream
+        sReadLine = oText.ReadLine
+        Execute strFun
+        If exitFlag Then Exit Do
+    Loop
+
+    oText.Close
+    Set oText = Nothing
+End Sub
+
+Sub writeTextAndDoSomething(path, strFun)
+    If Not oFso.FileExists(path) Then Exit Sub
+    
+    Dim oText : Set oText = oFso.OpenTextFile(path, FOR_APPENDING)
+
+    Execute strFun
+
+    oText.Close
+    Set oText = Nothing
+End Sub
 
 Function getFileNameOfPath(path)
     getFileNameOfPath = Mid(path, InStrRev(path, "\") + 1)
@@ -533,7 +595,7 @@ End Sub
 Const MY_COMPUTER = &H11&
 Const WINDOW_HANDLE = 0 
 Const OPTIONS = 0
-Sub getBrowseValue()
+Sub getBrowseValue(inputId)
     Dim objShell : Set objShell = CreateObject("Shell.Application") 
     Dim objFolder : Set objFolder = objShell.Namespace(MY_COMPUTER) 
     Dim objFolderItem : Set objFolderItem = objFolder.Self 
@@ -546,12 +608,21 @@ Sub getBrowseValue()
     Set objFolder = objShell.BrowseForFolder(WINDOW_HANDLE, "Select a folder:", OPTIONS, strPath) 
     If Not objFolder Is Nothing Then 
         Set objFolderItem = objFolder.Self
-        Call setElementValue(ID_INPUT_TARGET_FOLDER_PATH, objFolderItem.Path)
-        Call getTargetPath()
+        Call setElementValue(inputId, objFolderItem.Path)
+        Call doAfterSetInputValue(inputId)
     End If 
 
     Set objShell = Nothing
     Set objFolder = Nothing
+End Sub
+
+Sub doAfterSetInputValue(inputId)
+    Select Case inputId
+        Case ID_INPUT_CODE_PATH
+            Call getOutPath()
+        Case ID_INPUT_TARGET_FOLDER_PATH
+            Call getTargetPath(FROM_INPUT)
+    End Select
 End Sub
 
 Sub clearProcess()
@@ -563,10 +634,10 @@ Sub clearProcess()
     Call setElementInnerHTML(ID_DIV_OTA_COPYED, 0)
     Call setElementInnerHTML(ID_DIV_COPY_STATUS, "未开始")
     Call setElementColor(ID_DIV_COPY_STATUS, "black")
+    statusProcess = PROCESS_WAIT
 End Sub
 
 Sub clearOtherElements()
-    Call clearProcess()
     Call setElementValue(ID_INPUT_TARGET_FOLDER_PATH, "")
     Call setElementValue(ID_INPUT_NEW_FOLDER_NAME, "")
     Call jsRemoveAllOption(ID_SELECT_OTA_FILE)
@@ -574,9 +645,11 @@ Sub clearOtherElements()
 End Sub
 
 Sub clearHoldedValues()
-    pOutFolder = ""
-    pOutProjectFolder = ""
-    pOtaFile = ""
+    Call stOutFolder.Reset()
+    Call stOutProjectFolder.Reset()
+    Call stTargetFolder.Reset()
+    Call stNewFolderName.Reset()
+    Call stOtaFilePath.Reset()
 End Sub
 
 
@@ -584,290 +657,178 @@ End Sub
 '///////////////////////////////////////////////////////'
 'check input
 '///////////////////////////////////////////////////////'
-Sub getOutPath(where)
+Sub getOutPath()
     If bDebug Then MsgBox("getOutPath 111")
 
+    If statusProcess = PROCESS_COPY Then Call clearProcess()
     Call clearOtherElements()
     Call clearHoldedValues()
 
-    Dim sTmp
-    If StrComp(where, FROM_SELECT) = 0 Then
-        Call setElementValue(ID_INPUT_CODE_PATH, "")
+    Call stOutFolder.SetValue(STATUS_WAIT, _
+            getElementValue(ID_INPUT_CODE_PATH))
+    
 
-         sTmp = getElementValue(ID_SELECT_CODE_PATH)
+    If stOutFolder.Value = "" Then _
+            Call stOutFolder.SetStatusAndMsg(STATUS_INVALID, _
+                    "请选择或输入代码的out路径", True) : Exit Sub
 
-        If Not oFso.FolderExists(sTmp) Then MsgBox("路径不存在:" & Vblf & sTmp) : Exit Sub
-        If Not oFso.FolderExists(sTmp & "\out\target\product") Then MsgBox("路径下不存在\out\target\product") : Exit Sub
+    If Not oFso.FolderExists(stOutFolder.Value) Then _
+            Call stOutFolder.SetStatusAndMsg(STATUS_INVALID, _
+                    "当前代码的out路径不存在，请重新输入", True) : Exit Sub
 
-        pOutFolder = sTmp & "\out\target\product"
-    ElseIf StrComp(where, FROM_INPUT) = 0 Then
-        sTmp = getElementValue(ID_INPUT_CODE_PATH)
+    If Not oFso.FolderExists(stOutFolder.Value & "\target\product") Then _
+            Call stOutFolder.SetStatusAndMsg(STATUS_INVALID, _
+                    "当前代码的out路径下不存在\target\product，请重新输入", True) : Exit Sub
 
-        If sTmp = "" Then pOutFolder = getElementValue(ID_SELECT_CODE_PATH) & "\out\target\product" : Exit Sub
-        If Not oFso.FolderExists(sTmp) Then MsgBox("路径不存在:" & Vblf & sTmp) : Exit Sub
-        If Not oFso.FolderExists(sTmp & "\target\product") Then MsgBox("路径下不存在\target\product") : Exit Sub
-
-        pOutFolder = sTmp & "\target\product"
-    End If
+    Call stOutFolder.SetValue(STATUS_VALID, _
+            stOutFolder.Value & "\target\product")
 End Sub
 
 Sub getOutProjectPath()
-    If Not oFso.FolderExists(pOutFolder) Then
-        MsgBox("路径不存在: " & Vblf & pOutFolder)
-        pOutProjectFolder = ""
-        Exit Sub
-    End If
+    If stOutFolder.checkInvalidAndShowMsg() Then Exit Sub
 
-    Dim pSystemimg : pSystemimg = searchFolder(pOutFolder, "system.img", SEARCH_FILE, SEARCH_SUB, SEARCH_WHOLE_NAME)
+    Dim pSystemimg : pSystemimg = searchFolder(stOutFolder.Value, "system.img", SEARCH_FILE, SEARCH_SUB, SEARCH_WHOLE_NAME, False)
 
-    If pSystemimg = "" Then
-        MsgBox("""system.img"" is not exists in: " & Vblf & pOutFolder)
-        pOutProjectFolder = ""
-        Exit Sub
-    End If
+    If pSystemimg = "" Then _
+            Call stOutProjectFolder.SetStatusAndMsg(STATUS_INVALID, _
+                    "当前out目录下不存在system.img", True) : Exit Sub
 
-    pOutProjectFolder = Replace(pSystemimg, "\system.img", "")
+    Call stOutProjectFolder.SetValue(STATUS_VALID, _
+            Replace(pSystemimg, "\system.img", ""))
 End Sub
 
-Sub checkSoftwareFiles()
-    If bDebug Then MsgBox("checkSoftwareFiles")
-    vaFileNamesForCopy.ResetArray()
+Sub getTargetPath(where)
+    If statusProcess = PROCESS_COPY Then Call clearProcess()
 
-    Dim uScatterFilePath : uScatterFilePath = searchFolder(pOutProjectFolder, "_Android_scatter.txt" _
-            , SEARCH_FILE, SEARCH_ROOT, SEARCH_PART_NAME)
+    Call stTargetFolder.SetValue(STATUS_WAIT, _
+            getElementValue(ID_INPUT_TARGET_FOLDER_PATH))
 
-    If uScatterFilePath = "" Then
-        MsgBox("""Android_scatter.txt"" is not exists in: " & Vblf & pOutProjectFolder)
-        Exit Sub
-    End If
+    If stTargetFolder.Value = "" Then _
+            Call stTargetFolder.SetStatusAndMsg(STATUS_WAIT, _
+                    "请选择或输入目标文件夹路径", Eval(where = FROM_CHECK)) : Exit Sub
 
-    Call getNeedFilesName(uScatterFilePath)
+    If Not oFso.FolderExists(stTargetFolder.Value) Then _
+            Call stTargetFolder.SetStatusAndMsg(STATUS_INVALID, _
+                    "目标文件夹路径不存在，请重新输入", True) : Exit Sub
 
-    If vaFileNamesForCopy.Length > -1 Then
-        Call setElementInnerHTML(ID_DIV_SOFTWARE_WAIT, vaFileNamesForCopy.Length + 2)
-    End If
+    stTargetFolder.Status = STATUS_VALID
 End Sub
 
-Sub getNeedFilesName(uPath)
-    If bDebug Then MsgBox("getNeedFilesName")
+Sub getNewFolderName(where)
+    If statusProcess = PROCESS_COPY Then Call clearProcess()
 
-    vaFileNamesForCopy.Append(getFileNameOfPath(uPath))
+    Call stNewFolderName.SetValue(STATUS_WAIT, _
+            getElementValue(ID_INPUT_NEW_FOLDER_NAME))
 
-    Dim oTxt, sReadLine, sTmpFileName, iInFileName, iInNone
-    Set oTxt = oFso.OpenTextFile(uPath, FOR_READING)
-    Do Until oTxt.AtEndOfStream
-        sReadLine = oTxt.ReadLine
-        iInFileName = InStr(sReadLine, "file_name")
-        iInNone = InStr(sReadLine, "NONE")
-        If iInFileName > 0 And iInNone = 0 Then
-            sTmpFileName = Mid(sReadLine, iInFileName + 11)
-            If vaFileNamesForCopy.IsExistInArray(sTmpFileName) = -1 And sTmpFileName <> "system.img" Then
-                vaFileNamesForCopy.Append(Mid(sReadLine, iInFileName + 11))
-            End If
-        End If
-    Loop
-    oTxt.Close
-    Set oTxt = Nothing
-    vaFileNamesForCopy.SortArray()
+    If stNewFolderName.Value = "" Then _
+        Call stNewFolderName.SetStatusAndMsg(STATUS_WAIT, _
+                "请选择或输入新文件夹名", Eval(where = FROM_CHECK)) : Exit Sub
+
+    Call checkCharOfFolderName(stNewFolderName.Value)
 End Sub
 
-Sub checkDbFiles()
-    If bDebug Then MsgBox("checkDbFiles")
-    pFile_AP = ""
-    vaFolderPath_BP.ResetArray()
-    vaFilePath_BP.ResetArray()
+        Sub checkCharOfFolderName(name)
+            Dim i, char
+            For i = 1 To Len(name)
+                char = Mid(name, i, 1)
+                If InStr(INVALID_CHAR_OF_FOlDER_NAME, char) Then
+                    Call stNewFolderName.SetStatusAndMsg(STATUS_INVALID, _
+                            "文件名不能包含下列任何字符：" & Vblf & INVALID_CHAR_OF_FOlDER_NAME, True)
+                    Exit Sub
+                End If
+            Next
+            stNewFolderName.Status = STATUS_VALID
+        End Sub
 
-    Dim sKK_AP : sKK_AP = "\obj\CODEGEN\cgen"
-    Dim sKK_BP : sKK_BP = "\obj\CUSTGEN\custom\modem"
-    Dim sL1_AP : sL1_AP = "\obj\CGEN"
-    Dim sL1_BP : sL1_BP = "\obj\ETC"
+Sub getCustomBuildVersion(which)
+    '//check out path
+    If stOutFolder.checkStatusAndDoSomething("Call getOutPath()", "") Then Exit Sub
+    If stOutProjectFolder.checkStatusAndDoSomething("Call getOutProjectPath()", "") Then Exit Sub
 
-    Dim pFolder_AP
+    '//check build.prop
+    Dim pBuildProp : pBuildProp = stOutProjectFolder.Value & "\system\build.prop"
+    If Not oFso.FileExists(pBuildProp) Then MsgBox("文件不存在: " & Vblf & pBuildProp) : Exit Sub
 
-    '//get AP file path
-    Select Case True
-        Case oFso.FolderExists(pOutProjectFolder & sKK_AP)
-            pFolder_AP = pOutProjectFolder & sKK_AP
-        Case oFso.FolderExists(pOutProjectFolder & sL1_AP)
-            pFolder_AP = pOutProjectFolder & sL1_AP
-        Case Else
-            pFolder_AP = ""
-    End Select
-
-    If pFolder_AP <> "" Then pFile_AP = searchFolder(pFolder_AP, "_ENUM", SEARCH_FILE, SEARCH_ROOT, SEARCH_PART_NAME)
-    If pFile_AP <> "" Then pFile_AP = Replace(pFile_AP, "_ENUM", "")
-
-    If pFile_AP = "" Then MsgBox("AP file is not exists!")
-
-    '//get BP file path
-    Dim sTmp
-    Select Case True
-        Case oFso.FolderExists(pOutProjectFolder & sKK_BP)
-            vaFolderPath_BP.Append(pOutProjectFolder & sKK_BP)
-        Case oFso.FolderExists(pOutProjectFolder & sL1_BP)
-            sTmp = searchFolder(pOutProjectFolder & sL1_BP, "BPLGU", SEARCH_FOLDER, SEARCH_ROOT, SEARCH_PART_NAME)
-            If sTmp <> "" Then vaFolderPath_BP.Append(sTmp)
-    End Select
-
-    If vaFolderPath_BP.Length > -1 Then
-        Dim i 
-        For i = 0 To vaFolderPath_BP.Length
-            sTmp = searchFolder(vaFolderPath_BP.Value(i), "BPLGU", SEARCH_FILE, SEARCH_ROOT, SEARCH_PART_NAME)
-            If sTmp <> "" Then vaFilePath_BP.Append(sTmp)
-        Next
-    End If
-
-    'If vaFilePath_BP.Length = -1 Then MsgBox("BP file is not exists!")
-
-    If pFile_AP <> "" Then
-        Call setElementInnerHTML(ID_DIV_DB_WAIT, vaFilePath_BP.Length + 2)
-    ELse
-        Call setElementInnerHTML(ID_DIV_DB_WAIT, vaFilePath_BP.Length + 1)
-    End If
+    '//get version
+    Call readTextAndDoSomething(pBuildProp, _
+            "If InStr(sReadLine, """&which&""") > 0 Then" &_
+                " Call setElementValue(ID_INPUT_NEW_FOLDER_NAME, Trim(Mid(sReadLine,InStr(sReadLine,""="")+1)))" &_
+                " : Call getNewFolderName(FROM_INPUT)" &_
+                " : exitFlag = True")
 End Sub
 
 Sub checkOtaFiles()
     If bDebug Then MsgBox("checkOtaFiles")
-    If getElementValue(ID_SELECT_OTA_FILE) <> "如果编了OTA，请点击下面的按钮" Then Exit Sub
+    If stOtaFilePath.Status <> STATUS_WAIT Then Exit Sub
 
-    If pOutProjectFolder = "" Then Call getOutProjectPath()
+    If stOutFolder.checkStatusAndDoSomething("Call getOutPath()", "") Then Exit Sub
+    If stOutProjectFolder.checkStatusAndDoSomething("Call getOutProjectPath()", "") Then Exit Sub
 
-    Dim pOta_1 : pOta_1 = searchFolder(pOutProjectFolder, "target_files-package.zip" _
-            , SEARCH_FILE, SEARCH_ROOT, SEARCH_WHOLE_NAME)
-    Dim pOta_2 : pOta_2 = searchFolder(pOutProjectFolder, "-ota-"_
-            , SEARCH_FILE, SEARCH_ROOT, SEARCH_PART_NAME)
-    Dim pOta_3 : pOta_3 = searchFolder(pOutProjectFolder & "\obj\PACKAGING\target_files_intermediates", "-target_files-" _
-            , SEARCH_FILE, SEARCH_ROOT, SEARCH_PART_NAME)
+    Dim pOta_1 : pOta_1 = searchFolder(stOutProjectFolder.Value, "target_files-package.zip" _
+            , SEARCH_FILE, SEARCH_ROOT, SEARCH_WHOLE_NAME, False)
+    Dim pOta_2 : pOta_2 = searchFolder(stOutProjectFolder.Value, "-ota-"_
+            , SEARCH_FILE, SEARCH_ROOT, SEARCH_PART_NAME, False)
+    Dim pOta_3 : pOta_3 = searchFolder(stOutProjectFolder.Value & "\obj\PACKAGING\target_files_intermediates", "-target_files-" _
+            , SEARCH_FILE, SEARCH_ROOT, SEARCH_PART_NAME, False)
 
     If pOta_1 = "" And pOta_2 = "" And pOta_3 = "" Then
         Call jsRemoveAllOption(ID_SELECT_OTA_FILE)
-        Call jsAddOption(ID_SELECT_OTA_FILE, "无OTA文件")
+        Call jsAddOptionValueAndName(ID_SELECT_OTA_FILE, "", "无OTA文件")
+        Call stOtaFilePath.SetValue(STATUS_VALID, "")
         Exit Sub
     End If
 
     Call jsRemoveAllOption(ID_SELECT_OTA_FILE)
 
-    Call jsAddOption(ID_SELECT_OTA_FILE, "不拷贝OTA")
-    If pOta_1 <> "" Then Call jsAddOption(ID_SELECT_OTA_FILE, Replace(pOta_1, pOutProjectFolder, ""))
-    If pOta_2 <> "" Then Call jsAddOption(ID_SELECT_OTA_FILE, Replace(pOta_2, pOutProjectFolder, ""))
-    If pOta_3 <> "" Then Call jsAddOption(ID_SELECT_OTA_FILE, Replace(pOta_3, pOutProjectFolder, ""))
+    Call jsAddOptionValueAndName(ID_SELECT_OTA_FILE, "", "不拷贝OTA")
+    If pOta_1 <> "" Then Call jsAddOption(ID_SELECT_OTA_FILE, Replace(pOta_1, stOutProjectFolder.Value, ""))
+    If pOta_2 <> "" Then Call jsAddOption(ID_SELECT_OTA_FILE, Replace(pOta_2, stOutProjectFolder.Value, ""))
+    If pOta_3 <> "" Then Call jsAddOption(ID_SELECT_OTA_FILE, Replace(pOta_3, stOutProjectFolder.Value, ""))
+
+    Call stOtaFilePath.SetValue(STATUS_VALID, "")
 End Sub
 
 Sub getOtaFiles()
-    Dim pPartOtaFile : pPartOtaFile = getElementValue(ID_SELECT_OTA_FILE)
-    'If pPartOtaFile = "无OTA文件" Then Exit Sub
-    If pPartOtaFile = "不拷贝OTA" Then
-        pOtaFile = ""
-        Call setElementInnerHTML(ID_DIV_OTA_WAIT, 0)
-    Else
-        pOtaFile = pOutProjectFolder & pPartOtaFile
-        Call setElementInnerHTML(ID_DIV_OTA_WAIT, 1)
+    Call stOtaFilePath.SetValue(STATUS_WAIT, _
+            getElementValue(ID_SELECT_OTA_FILE))
+
+    If stOtaFilePath.Value <> "" Then
+        Call stOtaFilePath.SetValue(STATUS_VALID , _
+                stOutProjectFolder.Value & stOtaFilePath.Value)
     End If
 End Sub
-
-Sub getTargetPath()
-    Call clearProcess()
-
-    pTargetFolder = getElementValue(ID_INPUT_TARGET_FOLDER_PATH)
-    If pTargetFolder = "" Then Exit Sub
-
-    If Not oFso.FolderExists(pTargetFolder) Then
-        If MsgBox(pTargetFolder & "不存在，是否创建该目录？", 4) = 6 Then
-            oFso.CreateFolder(pTargetFolder)
-        Else
-            Call setElementValue(ID_INPUT_TARGET_FOLDER_PATH, "")
-            pTargetFolder = ""
-        End If
-    End If
-End Sub
-
-Sub getNewFolderName()
-    Call clearProcess()
-
-    sNewFolderName = getElementValue(ID_INPUT_NEW_FOLDER_NAME)
-
-    If Trim(sNewFolderName) = "" Then
-        MsgBox("请输入新文件夹名")
-        sNewFolderName = ""
-        Exit Sub
-    End If
-
-    Dim i, sTmp
-    For i = 1 To Len(sNewFolderName)
-        sTmp = Mid(sNewFolderName, i, 1)
-        If InStr(INVALID_STR_OF_FOlDER_NAME, sTmp) Then
-            MsgBox("文件名不能包含下列任何字符：" & Vblf & INVALID_STR_OF_FOlDER_NAME)
-            sNewFolderName = ""
-            Exit Sub
-        End If
-    Next
-End Sub
-
-Sub getCustomBuildVersion(which)
-    If pOutProjectFolder = "" Then Call getOutProjectPath()
-
-    Dim sCheckStr
-    If which = "display.id" Then
-        sCheckStr = "ro.build.display.id"
-    Else
-        sCheckStr = "ro.custom.build.version"
-    End If
-
-    Dim pBuildProp : pBuildProp = pOutProjectFolder & "\system\build.prop"
-    If Not oFso.FileExists(pBuildProp) Then
-        MsgBox("文件不存在: " & Vblf & pBuildProp)
-        Exit Sub
-    End If
-
-    Dim oTxt : Set oTxt = oFso.OpenTextFile(pBuildProp, FOR_READING)
-    Dim sTmp
-    Do Until oTxt.AtEndOfStream
-        sTmp = oTxt.ReadLine
-        If InStr(sTmp, sCheckStr) > 0 Then
-            Call setElementValue(ID_INPUT_NEW_FOLDER_NAME, Trim(Mid(sTmp,InStr(sTmp,"=")+1)))
-            Call getNewFolderName()
-            Exit Do
-        End If
-    Loop
-    oTxt.Close
-    Set oTxt = Nothing
-End Sub
-
-
 
 Sub runCopy()
+    '//init copy process
+    If statusProcess = PROCESS_COPY Then Call clearProcess()
+    Call setProcessStatus("checking")
+    statusProcess = PROCESS_COPY
+
     '//check holded value
-    If pOutFolder = "" Then MsgBox("未找到out目录") : Exit Sub
-    If pOutProjectFolder = "" Then Call getOutProjectPath()
-    If pOutProjectFolder = "" Then MsgBox("未找到out下的system.img") : Exit Sub
+    If stOutFolder.checkStatusAndDoSomething("Call getOutPath()", "Call setProcessStatus(""wait"")") Then Exit Sub
+    If stOutProjectFolder.checkStatusAndDoSomething("Call getOutProjectPath()", "Call setProcessStatus(""wait"")") Then Exit Sub
+    If stTargetFolder.checkStatusAndDoSomething("Call getTargetPath(FROM_CHECK)", "Call setProcessStatus(""wait"")") Then Exit Sub
+    If stNewFolderName.checkStatusAndDoSomething("Call getNewFolderName(FROM_CHECK)", "Call setProcessStatus(""wait"")") Then Exit Sub
 
-    If pTargetFolder = "" Then MsgBox("请输入目标路径") : Exit Sub
-    If sNewFolderName = "" Then MsgBox("请输入新文件夹名") : Exit Sub
-
-
-    '//set running status of copy process
-    Call clearProcess()
-    Call setElementInnerHTML(ID_DIV_COPY_STATUS, "拷贝中...")
-    Call setElementColor(ID_DIV_COPY_STATUS, "red")
-    
     '//dim folder path for copy
-    Dim pCopyFolder_software : pCopyFolder_software = pTargetFolder & "\" & sNewFolderName
+    Dim pCopyFolder_software : pCopyFolder_software = stTargetFolder.Value & "\" & stNewFolderName.Value
     Dim pCopyFolder_db : pCopyFolder_db = pCopyFolder_software & "\DB"
     Dim pCopyFolder_ota : pCopyFolder_ota = pCopyFolder_software & "\OTA"
 
     '//check folder path for copy
-    If oFso.FolderExists(pCopyFolder_software) Then MsgBox("目标路径已存在""" & sNewFolderName & """文件夹！") : Exit Sub
+    If oFso.FolderExists(pCopyFolder_software) Then MsgBox("目标路径已存在""" & stNewFolderName.Value & """文件夹！") : Call setProcessStatus("wait") : Exit Sub
+
+    '//set running status of copy process
+    Call setProcessStatus("copying")
 
     '//create folder
     oFso.CreateFolder(pCopyFolder_software)
     oFso.CreateFolder(pCopyFolder_db)
 
-
     '//check files for copy, and set element str of copy process.
     Call checkDbFiles()
     Call checkSoftwareFiles()
-    If pOtaFile <> "" Then Call setElementInnerHTML(ID_DIV_OTA_WAIT, 1)
-
+    If stOtaFilePath.Value <> "" Then Call setElementInnerHTML(ID_DIV_OTA_WAIT, 1)
 
     '//start copy AP files
     If pFile_AP <> "" Then
@@ -888,35 +849,149 @@ Sub runCopy()
     If vaFileNamesForCopy.Length > -1 Then
         Dim j
         For j = 0 To vaFileNamesForCopy.Length
-            Call copyFile(pOutProjectFolder & "\" & vaFileNamesForCopy.Value(j), pCopyFolder_software)
+            Call copyFile(stOutProjectFolder.Value & "\" & vaFileNamesForCopy.Value(j), pCopyFolder_software)
             Call setElementInnerHTML(ID_DIV_SOFTWARE_COPYED, Cint(getElementInnerHTML(ID_DIV_SOFTWARE_COPYED)) + 1)
         Next
-        Call copyFile(pOutProjectFolder & "\system.img", pCopyFolder_software)
+        Call copyFile(stOutProjectFolder.Value & "\system.img", pCopyFolder_software)
         Call setElementInnerHTML(ID_DIV_SOFTWARE_COPYED, Cint(getElementInnerHTML(ID_DIV_SOFTWARE_COPYED)) + 1)
     End If
 
     '//start copy OTA files
-    If pOtaFile <> "" Then
+    If stOtaFilePath.Value <> "" Then
         oFso.CreateFolder(pCopyFolder_ota)
-        Call copyFile(pOtaFile, pCopyFolder_ota)
+        Call copyFile(stOtaFilePath.Value, pCopyFolder_ota)
         Call setElementInnerHTML(ID_DIV_OTA_COPYED, Cint(getElementInnerHTML(ID_DIV_OTA_COPYED)) + 1)
     End If
 
     '//set finish status of copy process
-    Call setElementInnerHTML(ID_DIV_COPY_STATUS, "拷贝完成！")
-    Call setElementColor(ID_DIV_COPY_STATUS, "green")
+    Call setProcessStatus("done")
 
     '//save history of target folder path
-    Call writeHistory(pInputHistory, ID_UL_INPUT_HISTORY, pTargetFolder)
+    Call writeHistory(pInputHistory, ID_INPUT_TARGET_FOLDER_PATH, ID_LIST_TARGET_HISTORY, ID_UL_TARGET_HISTORY, stTargetFolder.Value)
 End Sub
 
-Sub copyFile(uCopyFilePath, uTargetFolderPath)
-    If oFso.FileExists(uCopyFilePath) Then
-        Dim filePath : filePath = """" & uCopyFilePath & """"
-        Dim folderPath : folderPath = """" & uTargetFolderPath & """"
-        
-        oWs.Run "FsoCopyFile.vbs " & filePath & " " & folderPath & "\", , True
-    Else
-       MsgBox(uCopyFilePath & " is not exist!")
-    End If
-End Sub
+        Sub setProcessStatus(status)
+            Select Case status
+                Case "wait"
+                    Call setElementInnerHTML(ID_DIV_COPY_STATUS, "未开始")
+                    Call setElementColor(ID_DIV_COPY_STATUS, "black")
+                Case "checking"
+                    Call setElementInnerHTML(ID_DIV_COPY_STATUS, "检查文件中...")
+                    Call setElementColor(ID_DIV_COPY_STATUS, "blue")
+                Case "copying"
+                    Call setElementInnerHTML(ID_DIV_COPY_STATUS, "拷贝中...")
+                    Call setElementColor(ID_DIV_COPY_STATUS, "red")
+                Case "done"
+                    Call setElementColor(ID_DIV_COPY_STATUS, "green")
+                    Call setElementInnerHTML(ID_DIV_COPY_STATUS, "拷贝完成！")
+            End Select
+        End Sub
+
+        Sub checkSoftwareFiles()
+            If bDebug Then MsgBox("checkSoftwareFiles")
+            vaFileNamesForCopy.ResetArray()
+
+            Dim uScatterFilePath : uScatterFilePath = searchFolder(stOutProjectFolder.Value, "_Android_scatter.txt" _
+                    , SEARCH_FILE, SEARCH_ROOT, SEARCH_PART_NAME, False)
+
+            If uScatterFilePath = "" Then
+                MsgBox("""Android_scatter.txt"" is not exists in: " & Vblf & stOutProjectFolder.Value)
+                Exit Sub
+            End If
+
+            Call getNeedFilesName(uScatterFilePath)
+
+            If vaFileNamesForCopy.Length > -1 Then
+                Call setElementInnerHTML(ID_DIV_SOFTWARE_WAIT, vaFileNamesForCopy.Length + 2)
+            End If
+        End Sub
+
+        Sub getNeedFilesName(uPath)
+            If bDebug Then MsgBox("getNeedFilesName")
+
+            '//add Android_scatter.txt first
+            vaFileNamesForCopy.Append(getFileNameOfPath(uPath))
+
+            Call readTextAndDoSomething(uPath, _
+                    "Call checkAndAddFileNameForCopy(sReadLine)")
+
+            vaFileNamesForCopy.SortArray()
+        End Sub
+
+        Sub checkAndAddFileNameForCopy(sReadLine)
+            Dim iInFileName : iInFileName = InStr(sReadLine, "file_name")
+            If iInFileName > 0 Then
+                Dim sTmpFileName : sTmpFileName = Mid(sReadLine, iInFileName + 11)
+                If sTmpFileName <> "NONE" And _
+                        sTmpFileName <> "system.img" And _
+                        vaFileNamesForCopy.IsExistInArray(sTmpFileName) = -1 Then
+                    vaFileNamesForCopy.Append(sTmpFileName)
+                End If
+            End If
+        End Sub
+
+        Sub checkDbFiles()
+            If bDebug Then MsgBox("checkDbFiles")
+            pFile_AP = ""
+            vaFolderPath_BP.ResetArray()
+            vaFilePath_BP.ResetArray()
+
+            Dim sKK_AP : sKK_AP = "\obj\CODEGEN\cgen"
+            Dim sKK_BP : sKK_BP = "\obj\CUSTGEN\custom\modem"
+            Dim sL1_AP : sL1_AP = "\obj\CGEN"
+            Dim sL1_BP : sL1_BP = "\obj\ETC"
+
+            Dim pFolder_AP
+
+            '//get AP file path
+            Select Case True
+                Case oFso.FolderExists(stOutProjectFolder.Value & sKK_AP)
+                    pFolder_AP = stOutProjectFolder.Value & sKK_AP
+                Case oFso.FolderExists(stOutProjectFolder.Value & sL1_AP)
+                    pFolder_AP = stOutProjectFolder.Value & sL1_AP
+                Case Else
+                    pFolder_AP = ""
+            End Select
+
+            If pFolder_AP <> "" Then pFile_AP = searchFolder(pFolder_AP, "_ENUM", SEARCH_FILE, SEARCH_ROOT, SEARCH_PART_NAME, False)
+            If pFile_AP <> "" Then pFile_AP = Replace(pFile_AP, "_ENUM", "")
+
+            If pFile_AP = "" Then MsgBox("AP file is not exists!")
+
+            '//get BP file path
+            Dim vaTmp, sTmp
+            Select Case True
+                Case oFso.FolderExists(stOutProjectFolder.Value & sKK_BP)
+                    vaFolderPath_BP.Append(stOutProjectFolder.Value & sKK_BP)
+                Case oFso.FolderExists(stOutProjectFolder.Value & sL1_BP)
+                    Set vaTmp = searchFolder(stOutProjectFolder.Value & sL1_BP, "BPLGU", SEARCH_FOLDER, SEARCH_ROOT, SEARCH_PART_NAME, True)
+                    If vaTmp.Length > -1 Then Set vaFolderPath_BP = vaTmp
+            End Select
+
+            If vaFolderPath_BP.Length > -1 Then
+                Dim i 
+                For i = 0 To vaFolderPath_BP.Length
+                    sTmp = searchFolder(vaFolderPath_BP.Value(i), "BPLGU", SEARCH_FILE, SEARCH_ROOT, SEARCH_PART_NAME, False)
+                    If sTmp <> "" Then vaFilePath_BP.Append(sTmp)
+                Next
+            End If
+
+            'If vaFilePath_BP.Length = -1 Then MsgBox("BP file is not exists!")
+
+            If pFile_AP <> "" Then
+                Call setElementInnerHTML(ID_DIV_DB_WAIT, vaFilePath_BP.Length + 2)
+            ELse
+                Call setElementInnerHTML(ID_DIV_DB_WAIT, vaFilePath_BP.Length + 1)
+            End If
+        End Sub
+
+        Sub copyFile(uCopyFilePath, uTargetFolderPath)
+            If oFso.FileExists(uCopyFilePath) Then
+                Dim filePath : filePath = """" & uCopyFilePath & """"
+                Dim folderPath : folderPath = """" & uTargetFolderPath & """"
+                
+                oWs.Run "FsoCopyFile.vbs " & filePath & " " & folderPath & "\", , True
+            Else
+               MsgBox(uCopyFilePath & " is not exist!")
+            End If
+        End Sub
