@@ -93,6 +93,11 @@
         4. 代码整理
         解决BUG：
         1. 支持拷贝多个BP文件
+    版本2.5.2
+        功能：
+        1. 代码路径和目标路径，改为点击输入框即显示列表，光标移开即隐藏列表
+        解决BUG：
+        1. 更改BP文件源路径为\system\etc\mddb，防止文件路径超出256字符限制
 -->
 <Html>
 <Head>
@@ -122,7 +127,7 @@ body {
     font-size:13px;
 }
 
-.Menu_code { 
+.Menu { 
     position:relative; 
     width:320px; 
     height:127px; 
@@ -132,17 +137,6 @@ body {
     margin-top:0px; 
     display:none; 
 }
-
-.Menu_target { 
-    position:relative; 
-    width:320px; 
-    height:127px; 
-    z-index:1; 
-    background: #FFF; 
-    border:1px solid #000; 
-    margin-top:0px; 
-    display:none; 
-} 
 
 .Menu2 { 
     position: absolute; 
@@ -192,9 +186,12 @@ body {
 <br>
 <fieldset>
 <legend><b>代码的out路径</b></legend>
-    <div class="form">
-        <input id="input_code_path" type="text" onchange="getOutPath()" size="50"/>
-        <div class="Menu_code" id="list_code_path" onmouseleave="showAndHide('list_code_path','hide')"> 
+    <div class="form" onmouseleave="showAndHide('list_code_path','hide')">
+        <input id="input_code_path" type="text" 
+                onclick="showAndHide('list_code_path','show')" 
+                onchange="getOutPath()" 
+                size="50"/>
+        <div class="Menu" id="list_code_path"> 
             <div class="Menu2"> 
                 <ul id="ul_code_path"> 
                 </ul> 
@@ -202,7 +199,6 @@ body {
         </div> 
     </div>
     <input type="button" onclick="getBrowseValue('input_code_path')" value="浏览" />
-    <input type="button" onchange="getOutPath()" onclick="showAndHide('list_code_path','show')" value="本地代码路径" />
     <input type="button" onclick="openTargetFolder('input_code_path')" value="打开当前路径文件夹" />
     <!-- <select id="select_code_path" onchange="getOutPath(0)"></select>
     <div id="shoudongshuru">手动输入（out所在的路径，例如Z:\8312C\alps\out）</div>
@@ -212,9 +208,12 @@ body {
 <br>
 <fieldset>
     <legend><b>目标文件夹路径（如F:\test）：</b></legend>
-    <div class="form">
-        <input id="target_folder_path" type="text" onchange="getTargetPath(0)" size="50"/>
-        <div class="Menu_target" id="list_target_history" onmouseleave="showAndHide('list_target_history','hide')"> 
+    <div class="form" onmouseleave="showAndHide('list_target_history','hide')">
+        <input id="target_folder_path" type="text" 
+                onclick="showAndHide('list_target_history','show')" 
+                onchange="getTargetPath(0)" 
+                size="50"/>
+        <div class="Menu" id="list_target_history"> 
             <div class="Menu2"> 
                 <ul id="ul_target_history"> 
                 </ul> 
@@ -222,7 +221,6 @@ body {
         </div> 
     </div>
     <input type="button" onclick="getBrowseValue('target_folder_path')" value="浏览" />
-    <input type="button" onclick="showAndHide('list_target_history','show')" value="历史记录" />
     <input type="button" onclick="openTargetFolder('target_folder_path')" value="打开当前路径文件夹" />
 </fieldset>
 

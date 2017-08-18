@@ -53,7 +53,6 @@ Dim stOtaFilePath : Set stOtaFilePath = New StatusHolder
 
 Dim statusProcess : statusProcess = PROCESS_WAIT
 
-Dim vaFolderPath_BP : Set vaFolderPath_BP = New VariableArray
 Dim vaFilePath_BP : Set vaFilePath_BP = New VariableArray
 Dim vaFileNamesForCopy : Set vaFileNamesForCopy = New VariableArray
 Dim vaHistoryTargetFolder : Set vaHistoryTargetFolder = New VariableArray
@@ -355,32 +354,36 @@ Const SEARCH_ROOT = 0
 Const SEARCH_SUB = 1
 Const SEARCH_WHOLE_NAME = 0
 Const SEARCH_PART_NAME = 1
+Const SEARCH_ONE = 0
+Const SEARCH_ALL = 1
+Const SEARCH_RETURN_PATH = 0
+Const SEARCH_RETURN_NAME = 1
 
-Function searchFolder(pRootFolder, str, searchType, searchWhere, searchMode, findAll)
+Function searchFolder(pRootFolder, str, searchType, searchWhere, searchMode, searchTimes, returnType)
     If Not oFso.FolderExists(pRootFolder) Then searchFolder = "" : Exit Function
-    If searchMode = SEARCH_WHOLE_NAME Then findAll = False
+    If searchMode = SEARCH_WHOLE_NAME Then searchTimes = SEARCH_ONE
 
     Dim oRootFolder : Set oRootFolder = oFso.GetFolder(pRootFolder)
 
     Dim Folder, sTmp
     Select Case True
         Case searchType = SEARCH_FILE And searchWhere = SEARCH_ROOT
-            If findAll Then
-                Set searchFolder = startSearch(oRootFolder.Files, pRootFolder, str, searchMode, True)
+            If searchTimes = SEARCH_ALL Then
+                Set searchFolder = startSearch(oRootFolder.Files, pRootFolder, str, searchMode, SEARCH_ALL, returnType)
             Else
-                searchFolder = startSearch(oRootFolder.Files, pRootFolder, str, searchMode, False)
+                searchFolder = startSearch(oRootFolder.Files, pRootFolder, str, searchMode, SEARCH_ONE, returnType)
             End If
 
         Case searchType = SEARCH_FOLDER And searchWhere = SEARCH_ROOT
-            If findAll Then
-                Set searchFolder = startSearch(oRootFolder.SubFolders, pRootFolder, str, searchMode, True)
+            If searchTimes = SEARCH_ALL Then
+                Set searchFolder = startSearch(oRootFolder.SubFolders, pRootFolder, str, searchMode, SEARCH_ALL, returnType)
             Else
-                searchFolder = startSearch(oRootFolder.SubFolders, pRootFolder, str, searchMode, False)
+                searchFolder = startSearch(oRootFolder.SubFolders, pRootFolder, str, searchMode, SEARCH_ONE, returnType)
             End If
 
         Case searchType = SEARCH_FILE And searchWhere = SEARCH_SUB
             For Each Folder In oRootFolder.SubFolders
-                sTmp = startSearch(Folder.Files, pRootFolder & "\" & Folder.Name, str, searchMode, False)
+                sTmp = startSearch(Folder.Files, pRootFolder & "\" & Folder.Name, str, searchMode, SEARCH_ONE, returnType)
                 If sTmp <> "" Then
                     searchFolder = sTmp
                     Exit Function
@@ -390,7 +393,7 @@ Function searchFolder(pRootFolder, str, searchType, searchWhere, searchMode, fin
 
         Case searchType = SEARCH_FILE And searchWhere = SEARCH_SUB
             For Each Folder In oRootFolder.SubFolders
-                sTmp = startSearch(Folder.SubFolders, pRootFolder & "\" & Folder.Name, str, searchMode, False)
+                sTmp = startSearch(Folder.SubFolders, pRootFolder & "\" & Folder.Name, str, searchMode, SEARCH_ONE, returnType)
                 If sTmp <> "" Then
                     searchFolder = sTmp
                     Exit Function
@@ -400,14 +403,18 @@ Function searchFolder(pRootFolder, str, searchType, searchWhere, searchMode, fin
     End Select
 End Function
 
-        Function startSearch(oAll, pRootFolder, str, searchMode, findAll)
+        Function startSearch(oAll, pRootFolder, str, searchMode, searchTimes, returnType)
             Dim oSingle
 
-            If findAll Then
+            If searchTimes = SEARCH_ALL Then
                 Dim vaStr : Set vaStr = New VariableArray
                 For Each oSingle In oAll
                     If checkSearchName(oSingle.Name, str, searchMode) Then
-                        vaStr.Append(pRootFolder & "\" & oSingle.Name)
+                        If returnType = SEARCH_RETURN_PATH Then
+                            vaStr.Append(pRootFolder & "\" & oSingle.Name)
+                        Else
+                            vaStr.Append(oSingle.Name)
+                        End If
                     End If
                 Next
                 Set startSearch = vaStr
@@ -415,9 +422,13 @@ End Function
             Else
                 For Each oSingle In oAll
                     If checkSearchName(oSingle.Name, str, searchMode) Then
-                        startSearch = pRootFolder & "\" & oSingle.Name
+                        If returnType = SEARCH_RETURN_PATH Then
+                            startSearch = pRootFolder & "\" & oSingle.Name
+                        Else
+                            startSearch = oSingle.Name
+                        End If
                         Exit Function
-                End If
+                    End If
                 Next
             End If
             startSearch = ""
@@ -687,7 +698,7 @@ End Sub
 Sub getOutProjectPath()
     If stOutFolder.checkInvalidAndShowMsg() Then Exit Sub
 
-    Dim pSystemimg : pSystemimg = searchFolder(stOutFolder.Value, "system.img", SEARCH_FILE, SEARCH_SUB, SEARCH_WHOLE_NAME, False)
+    Dim pSystemimg : pSystemimg = searchFolder(stOutFolder.Value, "system.img", SEARCH_FILE, SEARCH_SUB, SEARCH_WHOLE_NAME, SEARCH_ONE, SEARCH_RETURN_PATH)
 
     If pSystemimg = "" Then _
             Call stOutProjectFolder.SetStatusAndMsg(STATUS_INVALID, _
@@ -765,11 +776,11 @@ Sub checkOtaFiles()
     If stOutProjectFolder.checkStatusAndDoSomething("Call getOutProjectPath()", "") Then Exit Sub
 
     Dim pOta_1 : pOta_1 = searchFolder(stOutProjectFolder.Value, "target_files-package.zip" _
-            , SEARCH_FILE, SEARCH_ROOT, SEARCH_WHOLE_NAME, False)
+            , SEARCH_FILE, SEARCH_ROOT, SEARCH_WHOLE_NAME, SEARCH_ONE, SEARCH_RETURN_PATH)
     Dim pOta_2 : pOta_2 = searchFolder(stOutProjectFolder.Value, "-ota-"_
-            , SEARCH_FILE, SEARCH_ROOT, SEARCH_PART_NAME, False)
+            , SEARCH_FILE, SEARCH_ROOT, SEARCH_PART_NAME, SEARCH_ONE, SEARCH_RETURN_PATH)
     Dim pOta_3 : pOta_3 = searchFolder(stOutProjectFolder.Value & "\obj\PACKAGING\target_files_intermediates", "-target_files-" _
-            , SEARCH_FILE, SEARCH_ROOT, SEARCH_PART_NAME, False)
+            , SEARCH_FILE, SEARCH_ROOT, SEARCH_PART_NAME, SEARCH_ONE, SEARCH_RETURN_PATH)
 
     If pOta_1 = "" And pOta_2 = "" And pOta_3 = "" Then
         Call jsRemoveAllOption(ID_SELECT_OTA_FILE)
@@ -892,7 +903,7 @@ End Sub
             vaFileNamesForCopy.ResetArray()
 
             Dim uScatterFilePath : uScatterFilePath = searchFolder(stOutProjectFolder.Value, "_Android_scatter.txt" _
-                    , SEARCH_FILE, SEARCH_ROOT, SEARCH_PART_NAME, False)
+                    , SEARCH_FILE, SEARCH_ROOT, SEARCH_PART_NAME, SEARCH_ONE, SEARCH_RETURN_PATH)
 
             If uScatterFilePath = "" Then
                 MsgBox("""Android_scatter.txt"" is not exists in: " & Vblf & stOutProjectFolder.Value)
@@ -933,13 +944,11 @@ End Sub
         Sub checkDbFiles()
             If bDebug Then MsgBox("checkDbFiles")
             pFile_AP = ""
-            vaFolderPath_BP.ResetArray()
             vaFilePath_BP.ResetArray()
 
             Dim sKK_AP : sKK_AP = "\obj\CODEGEN\cgen"
-            Dim sKK_BP : sKK_BP = "\obj\CUSTGEN\custom\modem"
             Dim sL1_AP : sL1_AP = "\obj\CGEN"
-            Dim sL1_BP : sL1_BP = "\obj\ETC"
+            Dim sAll_BP : sAll_BP = "\system\etc\mddb"
 
             Dim pFolder_AP
 
@@ -953,27 +962,16 @@ End Sub
                     pFolder_AP = ""
             End Select
 
-            If pFolder_AP <> "" Then pFile_AP = searchFolder(pFolder_AP, "_ENUM", SEARCH_FILE, SEARCH_ROOT, SEARCH_PART_NAME, False)
+            If pFolder_AP <> "" Then pFile_AP = searchFolder(pFolder_AP, "_ENUM", SEARCH_FILE, SEARCH_ROOT, SEARCH_PART_NAME, SEARCH_ONE, SEARCH_RETURN_PATH)
             If pFile_AP <> "" Then pFile_AP = Replace(pFile_AP, "_ENUM", "")
 
             If pFile_AP = "" Then MsgBox("AP file is not exists!")
 
             '//get BP file path
             Dim vaTmp, sTmp
-            Select Case True
-                Case oFso.FolderExists(stOutProjectFolder.Value & sKK_BP)
-                    vaFolderPath_BP.Append(stOutProjectFolder.Value & sKK_BP)
-                Case oFso.FolderExists(stOutProjectFolder.Value & sL1_BP)
-                    Set vaTmp = searchFolder(stOutProjectFolder.Value & sL1_BP, "BPLGU", SEARCH_FOLDER, SEARCH_ROOT, SEARCH_PART_NAME, True)
-                    If vaTmp.Length > -1 Then Set vaFolderPath_BP = vaTmp
-            End Select
-
-            If vaFolderPath_BP.Length > -1 Then
-                Dim i 
-                For i = 0 To vaFolderPath_BP.Length
-                    sTmp = searchFolder(vaFolderPath_BP.Value(i), "BPLGU", SEARCH_FILE, SEARCH_ROOT, SEARCH_PART_NAME, False)
-                    If sTmp <> "" Then vaFilePath_BP.Append(sTmp)
-                Next
+            If oFso.FolderExists(stOutProjectFolder.Value & sAll_BP) Then
+                Set vaTmp = searchFolder(stOutProjectFolder.Value & sAll_BP, "BPLGU", SEARCH_FILE, SEARCH_ROOT, SEARCH_PART_NAME, SEARCH_ALL, SEARCH_RETURN_PATH)
+                If vaTmp.Length > -1 Then Set vaFilePath_BP = vaTmp
             End If
 
             'If vaFilePath_BP.Length = -1 Then MsgBox("BP file is not exists!")
