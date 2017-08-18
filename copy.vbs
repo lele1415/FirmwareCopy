@@ -121,7 +121,7 @@ End Sub
 Sub appendStrToHistoryTxt(DictPath, str)
     Dim oDict
     If Not OFso.FileExists(DictPath) Then
-        Set oDict = oFso.CreateTextFile(DictPath, True)
+        Call oFso.CreateTextFile(DictPath, True)
     End If
     
     Set oDict = oFso.OpenTextFile(DictPath, FOR_APPENDING)
@@ -583,14 +583,22 @@ Sub getOutPath(where)
     Call clearOtherElements()
     Call clearHoldedValues()
 
+    Dim sTmp
     If StrComp(where, FROM_SELECT) = 0 Then
         Call setElementValue(ID_INPUT_CODE_PATH, "")
-        pOutFolder = getElementValue(ID_SELECT_CODE_PATH) & "\out\target\product"
+
+         sTmp = getElementValue(ID_SELECT_CODE_PATH)
+
+        If Not oFso.FolderExists(sTmp) Then MsgBox("路径不存在:" & Vblf & sTmp) : Exit Sub
+        If Not oFso.FolderExists(sTmp & "\out\target\product") Then MsgBox("路径下不存在\out\target\product") : Exit Sub
+
+        pOutFolder = sTmp & "\out\target\product"
     ElseIf StrComp(where, FROM_INPUT) = 0 Then
-        Dim sTmp
         sTmp = getElementValue(ID_INPUT_CODE_PATH)
-        If sTmp = "" Then Exit Sub
-        If Not oFso.FolderExists(sTmp) Then MsgBox("路径不存在: " & Vblf & sTmp) : Exit Sub
+
+        If sTmp = "" Then pOutFolder = getElementValue(ID_SELECT_CODE_PATH) & "\out\target\product" : Exit Sub
+        If Not oFso.FolderExists(sTmp) Then MsgBox("路径不存在:" & Vblf & sTmp) : Exit Sub
+        If Not oFso.FolderExists(sTmp & "\target\product") Then MsgBox("路径下不存在\target\product") : Exit Sub
 
         pOutFolder = sTmp & "\target\product"
     End If
@@ -831,6 +839,7 @@ Sub runCopy()
 
 
     '//set running status of copy process
+    Call clearProcess()
     Call setElementInnerHTML(ID_DIV_COPY_STATUS, "拷贝中...")
     Call setElementColor(ID_DIV_COPY_STATUS, "red")
     
@@ -896,7 +905,10 @@ End Sub
 
 Sub copyFile(uCopyFilePath, uTargetFolderPath)
     If oFso.FileExists(uCopyFilePath) Then
-        oWs.Run "FsoCopyFile.vbs " & uCopyFilePath & " " & uTargetFolderPath & "\", , True
+        Dim filePath : filePath = """" & uCopyFilePath & """"
+        Dim folderPath : folderPath = """" & uTargetFolderPath & """"
+        
+        oWs.Run "FsoCopyFile.vbs " & filePath & " " & folderPath & "\", , True
     Else
        MsgBox(uCopyFilePath & " is not exist!")
     End If
