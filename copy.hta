@@ -61,6 +61,16 @@
     版本2.3
     1. 精简拷贝文件（只拷贝刷机需要的文件）
     2. 支持拷贝多个BP文件
+///////////////////////////////////////  
+    版本2.4
+    1. 代码整理
+    2. 代码路径改为单行显示
+    3. 去掉是否新建文件夹的选择
+    4. 输入后立即进行环境检测
+    5. 增加OTA文件的检测结果显示
+    6. 可通过浏览的方式选择目标文件夹
+    7. 拷贝文件时界面不卡死，实时显示拷贝进度
+    8. 添加输入历史记录的功能（目标文件夹路径）
 -->
 <Html>
 <Head>
@@ -72,6 +82,7 @@
 
 <style type="text/css">
 
+<!-- 
 body {
     font-family: sans-serif;
 }
@@ -88,72 +99,110 @@ body {
 #ota {
     font-size:13px;
 }
+ 
+.Menu { 
+    position:relative; 
+    width:320px; 
+    height:127px; 
+    z-index:1; 
+    background: #FFF; 
+    border:1px solid #000; 
+    margin-top:0px; 
+    display:none; 
+} 
 
+.Menu2 { 
+    position: absolute; 
+    left:0; 
+    top:0; 
+    width:100%; 
+    height:auto; 
+    overflow:hidden; 
+    z-index:1; 
+} 
+.Menu2 ul{margin:0;padding:0} 
+.Menu2 ul li{width:100%;height:25px;line-height:25px;text-indent:5px; 
+             border-bottom:1px solid #ccc;cursor:pointer; 
+             change:expression( 
+              this.onmouseover=function(){ 
+                this.style.background="#F2F5EF"; 
+              }, 
+              this.onmouseout=function(){ 
+                this.style.background=""; 
+              } 
+             ) 
+            } 
+.form{width:300px;height:auto;} 
+.form div{position:relative;top:0;left:0;margin-bottom:5px} 
+#List1#List2#List3{left:0px;top:93px;} 
+-->
 </style>
 
 <fieldset>
     <legend><b>拷贝进度</b></legend>
     <div id="count">
-        <div>DB文件已拷贝<b id="db_count">0</b><b>/</b><b id="db_count1">0</b></div> 
-        <div>软件文件已拷贝<b id="software_count">0</b><b>/</b><b id="software_count1">0</b></div>
-        <div>OTA文件已拷贝<b id="ota_count">0</b><b>/</b><b id="ota_count1">0</b></div>
+        <div>DB文件已拷贝<b id="db_copyed">0</b><b>/</b><b id="db_wait">0</b></div> 
+        <div>软件文件已拷贝<b id="software_copyed">0</b><b>/</b><b id="software_wait">0</b></div>
+        <div>OTA文件已拷贝<b id="ota_copyed">0</b><b>/</b><b id="ota_wait">0</b></div>
+        <div>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+            <b id="copy_status" style="color:black">未开始</b>
+        </div>
     </div>
 </fieldset>
 
 <br>
 <fieldset>
 <legend><b>代码路径</b></legend>
-    <select id="allCodePathList_id" onclick="cleanInputPath()" multiple="multiple" size="5"></select>
+    <select id="select_code_path" onchange="getOutPath(0)"></select>
     <div id="shoudongshuru">手动输入（out所在的路径，例如Z:\8312C\alps\out）</div>
-    <input id="codePathFromInput" type="text" size="50"/>
+    <input id="input_code_path" type="text" onchange="getOutPath(1)" size="50"/>
 </fieldset>
 
 <br>
 <fieldset>
     <legend><b>目标文件夹路径（如F:\test）：</b></legend>
-    <input id="destination_link" type="text" size="50"/>
+    <div class="form">
+        <input id="target_folder_path" type="text" onchange="getTargetPath()" onClick="showAndHide('List','show')" onblur="showAndHide('List','hide')" size="50"/>
+        <div class="Menu" id="List"> 
+            <div class="Menu2"> 
+                <ul id="input_history"> 
+                </ul> 
+            </div> 
+        </div> 
+    </div>
+    <input type="button" onclick="getBrowseValue()" value="浏览" />
 </fieldset>
 
 <br>
 <fieldset>
-    <legend><b>是否在目标路径新建文件夹：</b></legend>
-    <input type="radio" name="new_folder" onclick=removeInputBox() value="no_folder" /> 否
-    <input id="addInputBox" type="radio" name="new_folder" onclick=addInputBox() value="new_folder" checked="checked" >是
-    <br>
+    <legend><b>新文件夹名</b></legend>
+    <input id="new_folder_name" type="text" onchange="getNewFolderName()" size=50 />
     <div id="getVerName">获取版本号作为文件夹名</div>
-    <div id="inputbox1">
-    <input id="folder_name" type="text" size=50 />
     <input id="getVersion1" type="button" onclick="getCustomBuildVersion('display.id')" value="display.id" />
     <input id="getVersion2" type="button" onclick="getCustomBuildVersion('build.version')" value="build.version" />
-    </div>
 </fieldset>
 
 <br>
 <fieldset>
-    <legend><b>OTA文件：</b></legend>
-    <div id="ota">
-        <input type="radio" name="otaFilePicker" value="no_ota" checked="checked" />
-        no OTA
-    </div>
-    <div id="ota">
-        <input type="radio" name="otaFilePicker" value="target_files-package" />
-        target_files-package
-    </div>
-    <div id="ota">
-        <input type="radio" name="otaFilePicker" value="-ota-" />
-        -ota-
-    </div>
-    <div id="ota">
-        <input type="radio" name="otaFilePicker" value="obj/-target_files-" />
-        obj/-target_files-
-    </div>
+    <legend><b>选择OTA文件：</b></legend>
+    <select id="select_ota_file" onchange="getOtaFiles()">
+        <option>如果编了OTA，请点击下面的按钮</option>
+    </select>
+    <br>
+    <input type="button" onclick="checkOtaFiles()" value="检查OTA文件" />
 </fieldset>
 
 <br>
 <input OnClick="runCopy()" type="submit" value="Copy!">
 
+<Script Language="JavaScript" src="toolFun.js"></Script>
 <Script Language="JavaScript" src="copy.js"></Script>
-
 <Script Language = "VBScript" src="copy.vbs"></Script>
 
 </Body>

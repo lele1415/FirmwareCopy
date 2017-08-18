@@ -1,11 +1,10 @@
-function addInputBox() {
-    var obj = document.getElementById("inputbox1");
+/*function addVersionButton() {
+    var obj = document.getElementById("version_button");
     var count = obj.getElementsByTagName("input").length;
     if(!(count > 0)){
-        var input = document.createElement("input");
-        input.id = "folder_name";
-        input.type = "text";
-        input.size = 50;
+        var div1 = document.createElement("div");
+        div1.id = "getVerName"
+        div1.innerHTML = "获取版本号作为文件夹名"
 
         var input_bt1 = document.createElement("input");
         input_bt1.id = "getVersion1";
@@ -19,24 +18,24 @@ function addInputBox() {
         input_bt2.onclick = function(){getCustomBuildVersion("build.version")};
         input_bt2.value = "build.version"
      
-        obj.appendChild(input);
+        obj.appendChild(div1);
         obj.appendChild(input_bt1);
         obj.appendChild(input_bt2);
     }    
 }
 
-function removeInputBox() {
-    var obj = document.getElementById("inputbox1");
+function removeVersionButton() {
+    var obj = document.getElementById("version_button");
     var count = obj.getElementsByTagName("input").length;
     if(count > 0){
-        var child1 = document.getElementById("folder_name");
+        var child1 = document.getElementById("getVerName");
         var child2 = document.getElementById("getVersion1");
         var child3 = document.getElementById("getVersion2");
         obj.removeChild(child1); 
         obj.removeChild(child2); 
         obj.removeChild(child3); 
     }     
-}
+}*/
 
 function dbCount(){
     var i = document.getElementById("db_count").innerHTML;
@@ -62,24 +61,51 @@ function cleanCount(){
     document.getElementById("ota_count").innerHTML =  0; 
 }
 
-function option_creat(optionValue, optionInnerHTML)
-{
-    var option = document.createElement("option");
-    option.value = optionValue;
-    option.innerHTML = optionInnerHTML;
-
-    return option;
-}
-
-function parentNode_appendChild(parentNodeId, node)
-{
-    var parentNode = document.getElementById(parentNodeId);
-    parentNode.appendChild(node);
-}
-
-
-function addOption(SelectId, OptionName) 
+function jsAddOption(SelectId, OptionName) 
 {
     var option = option_creat(OptionName, OptionName);
     parentNode_appendChild(SelectId, option);
+}
+
+function jsRemoveAllOption(SelectId)
+{
+    var select = document.getElementById(SelectId)
+    var count = select.getElementsByTagName("option").length;
+    if (count > 0) {
+        for (var i = 1; i <= count; i++) {
+            parentNode_removeChild(SelectId, 1)
+        }
+    }
+}
+
+function showAndHide(obj, types)
+{ 
+    var Layer=window.document.getElementById(obj); 
+    switch(types){ 
+        case "show": 
+            Layer.style.display="block"; 
+            break; 
+        case "hide": 
+            Layer.style.display="none"; 
+    } 
+}
+
+function addBeforeLi(str, ulId)
+{
+    var obj = document.getElementById(ulId);
+    var li = document.createElement("li");
+    li.onmousedown = function(){setValueOfTargetFolder(str)};
+    li.innerHTML = str;
+    li.style.fontSize = "x-small";
+    
+    if (obj.childNodes.length > 0) {
+        var node = obj.childNodes[0];
+        obj.insertBefore(li,node);
+    } else {
+        obj.appendChild(li);
+    }
+}
+
+function removeLi(ulId, seq) {
+    parentNode_removeChild(ulId, seq);
 }
