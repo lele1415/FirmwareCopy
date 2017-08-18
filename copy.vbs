@@ -153,8 +153,15 @@ Sub initTxtFile(FilePath)
 End Sub
 
 Sub setValueOfTargetFolder(value)
+    Call showAndHide("List","hide")
     Call setElementValue(ID_INPUT_TARGET_FOLDER_PATH, value)
     Call getTargetPath()
+End Sub
+
+Sub openTargetFolder()
+    Dim sTmp : sTmp = getElementValue(ID_INPUT_TARGET_FOLDER_PATH)
+    If sTmp = "" Then Exit Sub
+    If oFso.FolderExists(sTmp) Then oWs.run "explorer.exe " & sTmp
 End Sub
 
 Class VariableArray
@@ -732,7 +739,7 @@ Sub checkOtaFiles()
     Dim pOta_3 : pOta_3 = searchFolder(pOutProjectFolder & "\obj\PACKAGING\target_files_intermediates", "-target_files-" _
             , SEARCH_FILE, SEARCH_ROOT, SEARCH_PART_NAME)
 
-    If pOta_1 = "" And pOta_1 = "" And pOta_1 = "" Then
+    If pOta_1 = "" And pOta_2 = "" And pOta_3 = "" Then
         Call jsRemoveAllOption(ID_SELECT_OTA_FILE)
         Call jsAddOption(ID_SELECT_OTA_FILE, "无OTA文件")
         Exit Sub
@@ -743,7 +750,7 @@ Sub checkOtaFiles()
     Call jsAddOption(ID_SELECT_OTA_FILE, "不拷贝OTA")
     If pOta_1 <> "" Then Call jsAddOption(ID_SELECT_OTA_FILE, Replace(pOta_1, pOutProjectFolder, ""))
     If pOta_2 <> "" Then Call jsAddOption(ID_SELECT_OTA_FILE, Replace(pOta_2, pOutProjectFolder, ""))
-    If pOta_3 <> "" Then Call jsAddOption(ID_SELECT_OTA_FILE, "\obj\PACKAGING\target_files_intermediates\...")
+    If pOta_3 <> "" Then Call jsAddOption(ID_SELECT_OTA_FILE, Replace(pOta_3, pOutProjectFolder, ""))
 End Sub
 
 Sub getOtaFiles()

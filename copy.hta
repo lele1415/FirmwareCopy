@@ -77,6 +77,14 @@
     2. 解决连续拷贝时进度未重置的问题
     3. 解决目标路径带空格时，拷贝报错的问题
     4. 解决没有InputHistory.txt时，创建后写入出错的问题
+///////////////////////////////////////  
+    版本2.5
+        功能：
+        1. 目标路径的历史记录，改为按钮才显示列表
+        2. 目标路径增加打开文件夹的按钮
+        解决BUG：
+        1. 解决检测不到除"target_files-package.zip"外的OTA文件的BUG
+        2. 解决拷贝obj下面的OTA文件出错的问题
 -->
 <Html>
 <Head>
@@ -174,7 +182,7 @@ body {
 <fieldset>
     <legend><b>目标文件夹路径（如F:\test）：</b></legend>
     <div class="form">
-        <input id="target_folder_path" type="text" onchange="getTargetPath()" onClick="showAndHide('List','show')" onblur="showAndHide('List','hide')" size="50"/>
+        <input id="target_folder_path" type="text" onchange="getTargetPath()" size="50"/>
         <div class="Menu" id="List"> 
             <div class="Menu2"> 
                 <ul id="input_history"> 
@@ -183,6 +191,8 @@ body {
         </div> 
     </div>
     <input type="button" onclick="getBrowseValue()" value="浏览" />
+    <input type="button" onclick="showAndHide('List','show')" value="历史记录" />
+    <input type="button" onclick="openTargetFolder()" value="打开当前路径文件夹" />
 </fieldset>
 
 <br>
@@ -205,7 +215,7 @@ body {
 </fieldset>
 
 <br>
-<input OnClick="runCopy()" type="submit" value="Copy!">
+<input type="button" onclick="runCopy()" value="Copy!">
 
 <Script Language="JavaScript" src="toolFun.js"></Script>
 <Script Language="JavaScript" src="copy.js"></Script>
