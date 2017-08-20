@@ -2,7 +2,7 @@ Const ID_LIST_TARGET_HISTORY = "list_target_history"
 Const ID_UL_TARGET_HISTORY = "ul_target_history"
 
 Dim pTargetPathHistory
-pTargetPathHistory = oWs.CurrentDirectory & "\Txt\targetPathHistory.txt"
+pTargetPathHistory = oWs.CurrentDirectory & "\tmp\targetPathHistory.txt"
 Dim vaHistoryTargetFolder : Set vaHistoryTargetFolder = New VariableArray
 
 Call readHistory(pTargetPathHistory, ID_INPUT_TARGET_PATH, ID_LIST_TARGET_HISTORY, ID_UL_TARGET_HISTORY)

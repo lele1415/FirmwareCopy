@@ -25,16 +25,6 @@ Const STATUS_DONE = "done"
 Const CHECK_WHEN_INPUT = 0
 Const CHECK_WHEN_COPY = 1
 
-Sub Sleep(MSecs)  
-    If Not oFso.FileExists("sleeper.vbs") Then
-        Dim objOutputFile : Set objOutputFile = oFso.CreateTextFile("sleeper.vbs", True)
-        objOutputFile.Write "wscript.sleep WScript.Arguments(0)"
-        objOutputFile.Close
-        Set objOutputFile = Nothing
-    End If
-    CreateObject("WScript.Shell").Run "sleeper.vbs " & MSecs,1 , True
-End Sub
-
 Function initTxtFile(FilePath)
     If oFso.FileExists(FilePath) Then
         Dim TxtFile

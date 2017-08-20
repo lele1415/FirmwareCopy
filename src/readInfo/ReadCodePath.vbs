@@ -109,7 +109,6 @@ Sub setListValue(inputId, listId, value)
         Call showAndHide(Eval("ID_LIST_CODE_PATH_" & value), "show")
     Else
         Call setElementValue(inputId, value)
-        Call Sleep(1)
 
         Select Case inputId
             Case ID_INPUT_CODE_PATH

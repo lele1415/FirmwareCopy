@@ -110,6 +110,7 @@
         1. Set OTA file path empty by default after checking OTA.
         2. Fix bug: mOtaFilePath will not be empty if select "不拷贝OTA" with the same code path.
         3. save all code path in config.ini
+        4. Put code files in order.
 -->
 <Html>
 <Head>
@@ -280,20 +281,25 @@ body {
 
 
 
-<Script Language="JavaScript" src="Util\CoreJsFuns.js"></Script>
-<Script Language="JavaScript" src="Util\UtilFuns.js"></Script>
-<Script Language="JavaScript" src="GetOtaFile.js"></Script>
-<Script Language = "VBScript" src="Util\UtilFuns.vbs"></Script>
-<Script Language = "VBScript" src="Util\UtilClasses.vbs"></Script>
-<Script Language = "VBScript" src="ReadCodePath.vbs"></Script>
-<Script Language = "VBScript" src="GetCodePath.vbs"></Script>
-<Script Language = "VBScript" src="GetTargetPath.vbs"></Script>
-<Script Language = "VBScript" src="ReadAndSaveTargetPath.vbs"></Script>
-<Script Language = "VBScript" src="GetNewFolderName.vbs"></Script>
-<Script Language = "VBScript" src="GetOtaFile.vbs"></Script>
-<Script Language = "VBScript" src="GetSoftwareFiles.vbs"></Script>
-<Script Language = "VBScript" src="GetDbFiles.vbs"></Script>
-<Script Language = "VBScript" src="StartCopy.vbs"></Script>
+<Script Language="JavaScript" src="src\util\CoreJsFuns.js"></Script>
+<Script Language="JavaScript" src="src\util\UtilFuns.js"></Script>
+<Script Language="JavaScript" src="src\getOTA\GetOtaFile.js"></Script>
+<Script Language = "VBScript" src="src\util\UtilFuns.vbs"></Script>
+<Script Language = "VBScript" src="src\util\UtilClasses.vbs"></Script>
+
+<Script Language = "VBScript" src="src\readInfo\ReadCodePath.vbs"></Script>
+
+<Script Language = "VBScript" src="src\getInput\GetCodePath.vbs"></Script>
+<Script Language = "VBScript" src="src\getInput\GetTargetPath.vbs"></Script>
+<Script Language = "VBScript" src="src\readInfo\ReadAndSaveTargetPath.vbs"></Script>
+<Script Language = "VBScript" src="src\getInput\GetNewFolderName.vbs"></Script>
+
+<Script Language = "VBScript" src="src\getOTA\GetOtaFile.vbs"></Script>
+
+<Script Language = "VBScript" src="src\getFiles\GetSoftwareFiles.vbs"></Script>
+<Script Language = "VBScript" src="src\getFiles\GetDbFiles.vbs"></Script>
+
+<Script Language = "VBScript" src="src\copyFiles\StartCopy.vbs"></Script>
 
 </Body>
 </Html>

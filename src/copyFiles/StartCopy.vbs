@@ -125,7 +125,7 @@ Sub copyFile(uCopyFilePath, uTargetFolderPath)
         Dim filePath : filePath = """" & uCopyFilePath & """"
         Dim folderPath : folderPath = """" & uTargetFolderPath & """"
         
-        oWs.Run "FsoCopyFile.vbs " & filePath & " " & folderPath & "\", , True
+        oWs.Run "src\copyFiles\FsoCopyFile.vbs " & filePath & " " & folderPath & "\", , True
     Else
        MsgBox(uCopyFilePath & " is not exist!")
     End If
