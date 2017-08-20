@@ -15,6 +15,8 @@ End Sub
 Sub checkOtaFiles()
     window.clearTimeout(idTimer)
 
+    mOtaFilePath = ""
+
 	If mOutSoftwarePath = "" Then MsgBox("out下的system.img不存在") : Exit Sub
 
     Dim pOta_1 : pOta_1 = searchFolder(mOutSoftwarePath, "target_files-package.zip" _
@@ -71,13 +73,13 @@ Sub onSelectOtaFile()
     Dim mSelectOtaFilePath
     mSelectOtaFilePath = getElementValue(ID_SELECT_OTA_FILE)
 
-    If mSelectOtaFilePath = "不拷贝OTA" Then
+    If mSelectOtaFilePath = "" Then
         mOtaFilePath = ""
         Exit Sub
     End If
 
     Call setElementInnerHTML(ID_DIV_OTA_WAIT, 1)
-    mOtaFilePath = mOutSoftwarePath & getElementValue(ID_SELECT_OTA_FILE)
+    mOtaFilePath = mOutSoftwarePath & mSelectOtaFilePath
 End Sub
 
 Sub resetOtaSelectInfo()
