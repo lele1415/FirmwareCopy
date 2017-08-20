@@ -118,6 +118,8 @@ Sub freezeAllInput()
     Call disableElement(ID_SELECT_OTA_FILE)
     Call disableElement(ID_BUTTON_CHECK_OTA_FILES)
 
+    Call disableElement(ID_CHECKBOX_COPY_VERIFIED)
+
     Call disableElement(ID_BUTTON_START_COPY)
 End Sub
 
@@ -134,6 +136,8 @@ Sub unfreezeAllInput()
 
     Call enableElement(ID_SELECT_OTA_FILE)
     Call enableElement(ID_BUTTON_CHECK_OTA_FILES)
+
+    Call enableElement(ID_CHECKBOX_COPY_VERIFIED)
     
     Call enableElement(ID_BUTTON_START_COPY)
 End Sub
