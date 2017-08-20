@@ -1,5 +1,0 @@
-X:\8312C\alps1\alps\out
-X:\8312C\alps2\alps\out
-X:\8312C\alps3\alps\out
-X:\8312D\alps\out
-X:\8382M\alps\out

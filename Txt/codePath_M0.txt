@@ -1,7 +1,0 @@
-X:\M08321_git\alps\out
-X:\M08127_git\alps1\out
-X:\M08127_git\alps2\out
-X:\M08163_git\alps\out
-X:\M08312CW_git\alps\out
-X:\M08735_git\alps\out
-X:\M08783T_git\alps\out
