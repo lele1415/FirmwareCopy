@@ -2,11 +2,12 @@ Const ID_DIV_SOFTWARE_WAIT = "software_wait"
 Const ID_CHECKBOX_COPY_VERIFIED = "copy_verified"
 
 Dim vaFileNamesForCopy : Set vaFileNamesForCopy = New VariableArray
+Dim uScatterFilePath
 
 Sub getSoftwareFiles()
     vaFileNamesForCopy.ResetArray()
 
-    Dim uScatterFilePath : uScatterFilePath = searchFolder(mOutSoftwarePath, "_Android_scatter.txt" _
+    uScatterFilePath = searchFolder(mOutSoftwarePath, "_Android_scatter.txt" _
             , SEARCH_FILE, SEARCH_ROOT, SEARCH_PART_NAME, SEARCH_ONE, SEARCH_RETURN_PATH)
 
     If uScatterFilePath = "" Then
@@ -14,7 +15,7 @@ Sub getSoftwareFiles()
         Exit Sub
     End If
 
-    Call getNeedFilesName(uScatterFilePath)
+    Call getNeedFilesName()
 
     If elementIsChecked(ID_CHECKBOX_COPY_VERIFIED) Then Call getVerifiedFiles()
 
@@ -23,11 +24,11 @@ Sub getSoftwareFiles()
     End If
 End Sub
 
-Sub getNeedFilesName(uPath)
+Sub getNeedFilesName()
     '//add Android_scatter.txt first
-    vaFileNamesForCopy.Append(getFileNameOfPath(uPath))
+    vaFileNamesForCopy.Append(getFileNameOfPath(uScatterFilePath))
 
-    Call readTextAndDoSomething(uPath, _
+    Call readTextAndDoSomething(uScatterFilePath, _
             "Call checkAndAddFileNameForCopy(sReadLine)")
 
     vaFileNamesForCopy.SortArray()

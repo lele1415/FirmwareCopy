@@ -51,6 +51,7 @@ End Sub
             '//check files for copy, and set element str of copy process.
             Call getDbFiles()
             Call getSoftwareFiles()
+            Call modifyScatterFile()
 
             checkInfo = True
         End Function
