@@ -5,6 +5,7 @@ Const KK_AP_FOLDER = "\obj\CODEGEN\cgen"
 Const L1_AP_FOLDER = "\obj\CGEN"
 Const All_BP_FOLDER = "\system\etc\mddb"
 Const N0_BP_FOLDER = "\system\vendor\etc\mddb"
+Const O1_BP_FOLDER = "\vendor\etc\mddb"
 
 Sub getDbFiles()
     Dim pFolder_AP, pFolder_BP
@@ -65,6 +66,8 @@ End Sub
                     str = mOutSoftwarePath & All_BP_FOLDER
                 Case oFso.FolderExists(mOutSoftwarePath & N0_BP_FOLDER)
                     str = mOutSoftwarePath & N0_BP_FOLDER
+                Case oFso.FolderExists(mOutSoftwarePath & O1_BP_FOLDER)
+                    str = mOutSoftwarePath & O1_BP_FOLDER
                 Case Else
                     str = ""
             End Select
